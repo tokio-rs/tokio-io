@@ -142,3 +142,7 @@ pub trait AsyncWrite: io::Write {
         Async::Ready(())
     }
 }
+
+impl AsyncRead for io::Repeat {}
+impl AsyncWrite for io::Sink {}
+impl<T: AsyncRead> AsyncRead for io::Take<T> {}
