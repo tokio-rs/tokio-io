@@ -1,13 +1,13 @@
-//! I/O conveniences when working with primitives in `tokio-core`
-//!
-//! Contains various combinators to work with I/O objects and type definitions
-//! as well.
+//! Core I/O traits and combinators when working with Tokio.
 //!
 //! A description of the high-level I/O combinators can be [found online] in
 //! addition to a description of the [low level details].
 //!
 //! [found online]: https://tokio.rs/docs/getting-started/core/
 //! [low level details]: https://tokio.rs/docs/going-deeper/core-low-level/
+
+#![deny(missing_docs)]
+#![doc(html_root_url = "https://docs.rs/tokio-io/0.1")]
 
 #[macro_use]
 extern crate log;
@@ -42,26 +42,49 @@ macro_rules! try_nb {
 }
 
 mod copy;
-mod frame;
 mod flush;
+mod frame;
+mod lines;
+mod read;
 mod read_exact;
 mod read_to_end;
-mod read;
 mod read_until;
 mod split;
 mod window;
 mod write_all;
 pub use self::copy::{copy, Copy};
-pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
 pub use self::flush::{flush, Flush};
+pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
+pub use self::lines::{lines, Lines};
+pub use self::read::{read, Read};
 pub use self::read_exact::{read_exact, ReadExact};
 pub use self::read_to_end::{read_to_end, ReadToEnd};
-pub use self::read::{read, Read};
 pub use self::read_until::{read_until, ReadUntil};
 pub use self::split::{ReadHalf, WriteHalf};
 pub use self::window::Window;
 pub use self::write_all::{write_all, WriteAll};
 
+/// A trait for readable objects which operated in an asynchronous and
+/// futures-aware fashion.
+///
+/// This trait inherits from `io::Read` and indicates as a marker that an I/O
+/// object is **nonblocking**, meaning that it will return an error instead of
+/// blocking when bytes are read. Specifically this means that the `read`
+/// function for traits that implement this type can have a few return values:
+///
+/// * `Ok(n)` means that `n` bytes of data was immediately read and placed into
+///   the output buffer, where `n` == 0 implies that EOF has been reached.
+/// * `Err(e) if e.kind() == ErrorKind::WouldBlock` means that no data was read
+///   into the buffer provided. The I/O object is not currently readable but may
+///   become readable in the future. Most importantly, **the current future's
+///   task is scheduled to get unparked when the object is readable**. This
+///   means that like `Future::poll` you'll receive a notification when the I/O
+///   object is readable again.
+/// * `Err(e)` for other errors are standard I/O errors coming from the
+///   underlying object.
+///
+/// This trait importantly means that the `read` method only works in the
+/// context of a future's task. The object may panic if used outside of a task.
 pub trait AsyncRead: io::Read {
     /// Tests to see if this I/O object may be readable.
     ///
@@ -119,6 +142,26 @@ pub trait AsyncRead: io::Read {
     }
 }
 
+/// A trait for writable objects which operated in an asynchronous and
+/// futures-aware fashion.
+///
+/// This trait inherits from `io::Write` and indicates as a marker that an I/O
+/// object is **nonblocking**, meaning that it will return an error instead of
+/// blocking when bytes are written. Specifically this means that the `write`
+/// function for traits that implement this type can have a few return values:
+///
+/// * `Ok(n)` means that `n` bytes of data was immediately written .
+/// * `Err(e) if e.kind() == ErrorKind::WouldBlock` means that no data was
+///   written from the buffer provided. The I/O object is not currently
+///   writable but may become writable in the future. Most importantly, **the
+///   current future's task is scheduled to get unparked when the object is
+///   readable**. This means that like `Future::poll` you'll receive a
+///   notification when the I/O object is writable again.
+/// * `Err(e)` for other errors are standard I/O errors coming from the
+///   underlying object.
+///
+/// This trait importantly means that the `write` method only works in the
+/// context of a future's task. The object may panic if used outside of a task.
 pub trait AsyncWrite: io::Write {
     /// Tests to see if this I/O object may be writable.
     ///
