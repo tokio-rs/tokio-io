@@ -52,6 +52,8 @@ mod read_until;
 mod split;
 mod window;
 mod write_all;
+mod encoding;
+mod decoded;
 pub use self::copy::{copy, Copy};
 pub use self::flush::{flush, Flush};
 pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
@@ -63,6 +65,8 @@ pub use self::read_until::{read_until, ReadUntil};
 pub use self::split::{ReadHalf, WriteHalf};
 pub use self::window::Window;
 pub use self::write_all::{write_all, WriteAll};
+pub use self::encoding::{Encoding, Encoder};
+pub use self::decoded::{Decoded, Decoder};
 
 /// A trait for readable objects which operated in an asynchronous and
 /// futures-aware fashion.
@@ -140,6 +144,13 @@ pub trait AsyncRead: io::Read {
     {
         split::split(self)
     }
+
+    /// Decode bytes read from this stream using a `Decoder`.
+    fn decoded<D: Decoder>(self, decoder: D) -> Decoded<Self, D>
+        where Self: Sized
+    {
+        decoded::decoded(self, decoder)
+    }
 }
 
 /// A trait for writable objects which operated in an asynchronous and
@@ -183,6 +194,14 @@ pub trait AsyncWrite: io::Write {
     /// future's task.
     fn poll_write(&mut self) -> Async<()> {
         Async::Ready(())
+    }
+
+    /// Constructs a Sink which uses the supplied encoder to translate items to
+    /// bytes to be written out
+    fn encoding<E: Encoder>(self, encoder: E) -> Encoding<Self, E>
+        where Self: Sized
+    {
+        encoding::encoding(self, encoder)
     }
 }
 
