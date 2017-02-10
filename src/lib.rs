@@ -52,6 +52,7 @@ mod read_until;
 mod split;
 mod window;
 mod write_all;
+mod byte_sink;
 pub use self::copy::{copy, Copy};
 pub use self::flush::{flush, Flush};
 pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
@@ -63,6 +64,7 @@ pub use self::read_until::{read_until, ReadUntil};
 pub use self::split::{ReadHalf, WriteHalf};
 pub use self::window::Window;
 pub use self::write_all::{write_all, WriteAll};
+pub use self::byte_sink::{byte_sink, ByteSink};
 
 /// A trait for readable objects which operated in an asynchronous and
 /// futures-aware fashion.
@@ -187,5 +189,6 @@ pub trait AsyncWrite: io::Write {
 }
 
 impl AsyncRead for io::Repeat {}
+impl<T: AsRef<[u8]>> AsyncRead for io::Cursor<T> {}
 impl AsyncWrite for io::Sink {}
 impl<T: AsyncRead> AsyncRead for io::Take<T> {}
