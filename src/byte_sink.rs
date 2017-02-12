@@ -13,7 +13,7 @@ pub struct ByteSink<W, R> {
     read: Option<R>,
     write_cursor: usize,
     read_cursor: usize,
-    buffer: [u8; BUFFER_SIZE],
+    buffer: Box<[u8]>,
 }
 
 /// Construct a sink that consumes AsyncReads, writing their entire contents to
@@ -24,7 +24,7 @@ pub fn byte_sink<W, R>(write: W) -> ByteSink<W, R> {
         read: None,
         write_cursor: 0,
         read_cursor: 0,
-        buffer: [0; BUFFER_SIZE],
+        buffer: vec![0; BUFFER_SIZE].into_boxed_slice(),
     }
 }
 
@@ -33,12 +33,15 @@ impl<W: AsyncWrite, R: AsyncRead> Sink for ByteSink<W, R> {
     type SinkError = io::Error;
 
     fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
-        if self.read.is_none() {
-            self.read = Some(item);
-            Ok(AsyncSink::Ready)
-        } else {
-            Ok(AsyncSink::NotReady(item))
+        if self.read.is_some() {
+            self.poll_complete()?;
+            if self.read.is_some() {
+                return Ok(AsyncSink::NotReady(item))
+            }
         }
+
+        self.read = Some(item);
+        Ok(AsyncSink::Ready)
     }
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
