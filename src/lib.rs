@@ -56,7 +56,7 @@ mod framed_read;
 mod framed_write;
 pub use self::copy::{copy, Copy};
 pub use self::flush::{flush, Flush};
-pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
+pub use self::frame::{EasyBuf, EasyBufMut, Framed};
 pub use self::lines::{lines, Lines};
 pub use self::read::{read, Read};
 pub use self::read_exact::{read_exact, ReadExact};
@@ -129,7 +129,7 @@ pub trait AsyncRead: io::Read {
     /// If you want to work more directly with the streams and sink, consider
     /// calling `split` on the `Framed` returned by this method, which will
     /// break them into separate objects, allowing them to interact more easily.
-    fn framed<C: Codec>(self, codec: C) -> Framed<Self, C>
+    fn framed<C: Encoder + Decoder>(self, codec: C) -> Framed<Self, C>
         where Self: AsyncWrite + Sized,
     {
         frame::framed(self, codec)
