@@ -228,16 +228,22 @@ impl<T, C> Stream for Framed<T, C>
     type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Option<C::Item>, io::Error> {
-        const WRITE_WINDOW_SIZE: usize = 8 * 1024;
-
         if self.eof {
             return Ok(Async::Ready(None))
         }
         loop {
+            if let x@Some(_) = self.codec.decode(&mut self.rd)? {
+                return Ok(Async::Ready(x));
+            }
             let n = {
                 let mut buffer = self.rd.get_mut();
                 let old = buffer.len();
-                buffer.resize(old + WRITE_WINDOW_SIZE, 0);
+                let mut cap = buffer.capacity();
+                if old == cap {
+                    buffer.reserve(cap*2);
+                    cap = buffer.capacity();
+                }
+                buffer.resize(cap, 0);
                 let n = try_nb!(self.upstream.read(&mut buffer[old..]));
                 buffer.resize(old + n, 0);
                 n
@@ -245,9 +251,6 @@ impl<T, C> Stream for Framed<T, C>
             if n == 0 {
                 self.eof = true;
                 return self.codec.eof(&mut self.rd).map(Async::Ready);
-            }
-            if let x@Some(_) = self.codec.decode(&mut self.rd)? {
-                return Ok(Async::Ready(x));
             }
         }
     }

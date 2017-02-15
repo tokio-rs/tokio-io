@@ -41,14 +41,12 @@ pub struct FramedRead<R, D> {
     buffer: EasyBuf,
 }
 
-const WRITE_WINDOW_SIZE: usize = 8 * 1024;
-
 pub fn framed_read<R, D>(read: R, decoder: D) -> FramedRead<R, D> {
     FramedRead {
         read: read,
         eof: false,
         decoder: decoder,
-        buffer: EasyBuf::with_capacity(WRITE_WINDOW_SIZE),
+        buffer: EasyBuf::new(),
     }
 }
 
@@ -63,10 +61,18 @@ impl<R: AsyncRead, D: Decoder> Stream for FramedRead<R, D>
             return Ok(Async::Ready(None))
         }
         loop {
+            if let x@Some(_) = self.decoder.decode(&mut self.buffer)? {
+                return Ok(Async::Ready(x));
+            }
             let n = {
                 let mut buffer = self.buffer.get_mut();
                 let old = buffer.len();
-                buffer.resize(old + WRITE_WINDOW_SIZE, 0);
+                let mut cap = buffer.capacity();
+                if old == cap {
+                    buffer.reserve(cap*2);
+                    cap = buffer.capacity();
+                }
+                buffer.resize(cap, 0);
                 let n = try_nb!(self.read.read(&mut buffer[old..]));
                 buffer.resize(old + n, 0);
                 n
@@ -74,9 +80,6 @@ impl<R: AsyncRead, D: Decoder> Stream for FramedRead<R, D>
             if n == 0 {
                 self.eof = true;
                 return self.decoder.eof(&mut self.buffer).map(Async::Ready);
-            }
-            if let x@Some(_) = self.decoder.decode(&mut self.buffer)? {
-                return Ok(Async::Ready(x));
             }
         }
     }
