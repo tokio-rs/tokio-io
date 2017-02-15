@@ -5,7 +5,7 @@ use futures::{Async, Poll, Stream};
 use {AsyncRead, EasyBuf};
 
 /// Trait of helper objects for decoding messages from an `AsyncRead`, for use
-/// with `Decoded`.
+/// with `FramedRead`.
 pub trait Decoder {
     /// The type of messages decoded from the `AsyncRead`
     type Item;
@@ -17,7 +17,7 @@ pub trait Decoder {
 
     /// Attempts to decode a message from the provided buffer of bytes.
     ///
-    /// This method is called by `Decoded` whenever new data becomes
+    /// This method is called by `FramedRead` whenever new data becomes
     /// available. If a complete message is available, its constituent bytes
     /// should be consumed (for example, with `EasyBuf::drain_to`) and
     /// Ok(Some(message)) returned.
@@ -34,7 +34,7 @@ pub trait Decoder {
 }
 
 /// A `Stream` of messages decoded from an `AsyncRead`.
-pub struct Decoded<R, D> {
+pub struct FramedRead<R, D> {
     read: R,
     eof: bool,
     decoder: D,
@@ -43,8 +43,8 @@ pub struct Decoded<R, D> {
 
 const WRITE_WINDOW_SIZE: usize = 8 * 1024;
 
-pub fn decoded<R, D>(read: R, decoder: D) -> Decoded<R, D> {
-    Decoded {
+pub fn framed_read<R, D>(read: R, decoder: D) -> FramedRead<R, D> {
+    FramedRead {
         read: read,
         eof: false,
         decoder: decoder,
@@ -52,7 +52,7 @@ pub fn decoded<R, D>(read: R, decoder: D) -> Decoded<R, D> {
     }
 }
 
-impl<R: AsyncRead, D: Decoder> Stream for Decoded<R, D>
+impl<R: AsyncRead, D: Decoder> Stream for FramedRead<R, D>
     where D::Error: From<io::Error>
 {
     type Item = D::Item;

@@ -5,32 +5,32 @@ use futures::{Async, Poll, Sink, StartSend, AsyncSink};
 use AsyncWrite;
 
 /// Trait of helper objects to write out messages as bytes, for use with
-/// Encoding.
+/// `FramedWrite`.
 pub trait Encoder {
-    /// The type of items consumed by the Encoder
+    /// The type of items consumed by the `Encoder`
     type Item;
 
     /// Encode a complete Item into a byte buffer
     fn encode<T: Extend<u8>>(&mut self, item: Self::Item, buffer: &mut T);
 }
 
-/// A Sink that uses an Encoder to convert its SinkItems to bytes and writes out
+/// A Sink that uses an `Encoder` to convert its `SinkItem`s to bytes and writes out
 /// those bytes.
-pub struct Encoding<W, E> {
+pub struct FramedWrite<W, E> {
     encoder: E,
     write: W,
     buffer: Vec<u8>,
 }
 
-pub fn encoding<W, E>(write: W, encoder: E) -> Encoding<W, E> {
-    Encoding {
+pub fn framed_write<W, E>(write: W, encoder: E) -> FramedWrite<W, E> {
+    FramedWrite {
         encoder: encoder,
         write: write,
         buffer: Vec::new(),
     }
 }
 
-impl<W: AsyncWrite, E: Encoder> Sink for Encoding<W, E>
+impl<W: AsyncWrite, E: Encoder> Sink for FramedWrite<W, E>
 {
     type SinkItem = E::Item;
     type SinkError = io::Error;

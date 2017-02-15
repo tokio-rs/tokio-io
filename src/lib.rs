@@ -52,8 +52,8 @@ mod read_until;
 mod split;
 mod window;
 mod write_all;
-mod encoding;
-mod decoded;
+mod framed_read;
+mod framed_write;
 pub use self::copy::{copy, Copy};
 pub use self::flush::{flush, Flush};
 pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
@@ -65,8 +65,8 @@ pub use self::read_until::{read_until, ReadUntil};
 pub use self::split::{ReadHalf, WriteHalf};
 pub use self::window::Window;
 pub use self::write_all::{write_all, WriteAll};
-pub use self::encoding::{Encoding, Encoder};
-pub use self::decoded::{Decoded, Decoder};
+pub use self::framed_read::{FramedRead, Decoder};
+pub use self::framed_write::{FramedWrite, Encoder};
 
 /// A trait for readable objects which operated in an asynchronous and
 /// futures-aware fashion.
@@ -146,10 +146,10 @@ pub trait AsyncRead: io::Read {
     }
 
     /// Decode bytes read from this stream using a `Decoder`.
-    fn decoded<D: Decoder>(self, decoder: D) -> Decoded<Self, D>
+    fn framed_read<D: Decoder>(self, decoder: D) -> FramedRead<Self, D>
         where Self: Sized
     {
-        decoded::decoded(self, decoder)
+        framed_read::framed_read(self, decoder)
     }
 }
 
@@ -196,12 +196,12 @@ pub trait AsyncWrite: io::Write {
         Async::Ready(())
     }
 
-    /// Constructs a Sink which uses the supplied encoder to translate items to
+    /// Constructs a Sink which uses the supplied `Encoder` to translate items to
     /// bytes to be written out
-    fn encoding<E: Encoder>(self, encoder: E) -> Encoding<Self, E>
+    fn framed_write<E: Encoder>(self, encoder: E) -> FramedWrite<Self, E>
         where Self: Sized
     {
-        encoding::encoding(self, encoder)
+        framed_write::framed_write(self, encoder)
     }
 }
 
