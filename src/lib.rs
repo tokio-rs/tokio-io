@@ -12,11 +12,14 @@
 #[macro_use]
 extern crate log;
 extern crate futures;
+extern crate bytes;
 
 use std::io as std_io;
 
-use futures::{BoxFuture, Async};
+use futures::{BoxFuture, Poll, Async};
 use futures::stream::BoxStream;
+
+use bytes::{Buf, BufMut};
 
 /// A convenience typedef around a `Future` whose error component is `io::Error`
 pub type IoFuture<T> = BoxFuture<T, std_io::Error>;
@@ -103,6 +106,64 @@ pub trait AsyncRead: std_io::Read {
         Async::Ready(())
     }
 
+    /// Prepares an uninitialized buffer to be safe to pass to `read`. Returns
+    /// `true` if the supplied buffer was zeroed out.
+    ///
+    /// While it would be highly unusual, implementations of [`io::Read`] are
+    /// able to read data from the buffer passed as an argument. Because of
+    /// this, the buffer passed to [`io::Read`] must be initialized memory. In
+    /// situations where large numbers of buffers are used, constantly having to
+    /// zero out buffers can be expensive.
+    ///
+    /// This function does any necessary work to prepare an uninitialized buffer
+    /// to be safe to pass to `read`. If `read` guarantees to never attempt read
+    /// data out of the supplied buffer, then `prepare_uninitialized_buffer`
+    /// doesn't need to do any work.
+    ///
+    /// If this function returns `true`, then the memory has been zeroed out.
+    /// This allows implementations of `AsyncRead` which are composed of
+    /// multiple sub implementations to efficiently implement
+    /// `prepare_uninitialized_buffer`.
+    ///
+    /// This function is called from [`read_buf`].
+    ///
+    /// [`io::Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
+    /// [`read_buf`]: #method.read_buf
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        for i in 0..buf.len() {
+            buf[i] = 0;
+        }
+
+        true
+    }
+
+    /// Pull some bytes from this source into the specified `Buf`, returning
+    /// how many bytes were read.
+    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error> {
+        if !buf.has_remaining_mut() {
+            return Ok(Async::Ready(0));
+        }
+
+        unsafe {
+            let n = {
+                let b = buf.bytes_mut();
+
+                self.prepare_uninitialized_buffer(b);
+
+                match self.read(b) {
+                    Ok(n) => n,
+                    Err(ref e) if e.kind() == std_io::ErrorKind::WouldBlock => {
+                        return Ok(Async::NotReady);
+                    }
+                    Err(e) => return Err(e),
+                }
+            };
+
+            buf.advance_mut(n);
+            Ok(Async::Ready(n))
+        }
+    }
+
     /// Provides a `Stream` and `Sink` interface for reading and writing to this
     /// `Io` object, using `Decode` and `Encode` to read and write the raw data.
     ///
@@ -141,10 +202,19 @@ impl<T: ?Sized + AsyncRead> AsyncRead for Box<T> {
     fn poll_read(&mut self) -> Async<()> {
         (**self).poll_read()
     }
+
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        (**self).prepare_uninitialized_buffer(buf)
+    }
 }
+
 impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
     fn poll_read(&mut self) -> Async<()> {
         (**self).poll_read()
+    }
+
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        (**self).prepare_uninitialized_buffer(buf)
     }
 }
 
@@ -190,6 +260,24 @@ pub trait AsyncWrite: std_io::Write {
     fn poll_write(&mut self) -> Async<()> {
         Async::Ready(())
     }
+
+    /// Write a `Buf` into this value, returning how many bytes were written.
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error> {
+        if !buf.has_remaining() {
+            return Ok(Async::Ready(0));
+        }
+
+        match self.write(buf.bytes()) {
+            Ok(n) => {
+                buf.advance(n);
+                Ok(Async::Ready(n))
+            }
+            Err(ref e) if e.kind() == std_io::ErrorKind::WouldBlock => {
+                return Ok(Async::NotReady);
+            }
+            Err(e) => Err(e),
+        }
+    }
 }
 
 impl<T: ?Sized + AsyncWrite> AsyncWrite for Box<T> {
@@ -203,6 +291,16 @@ impl<'a, T: ?Sized + AsyncWrite> AsyncWrite for &'a mut T {
     }
 }
 
-impl AsyncRead for std_io::Repeat {}
-impl AsyncWrite for std_io::Sink {}
-impl<T: AsyncRead> AsyncRead for std_io::Take<T> {}
+impl AsyncRead for std_io::Repeat {
+    unsafe fn prepare_uninitialized_buffer(&self, _: &mut [u8]) -> bool {
+        false
+    }
+}
+
+impl AsyncWrite for std_io::Sink {
+}
+
+// TODO: Implement `prepare_uninitialized_buffer` for `io::Take`.
+// This is blocked on rust-lang/rust#27269
+impl<T: AsyncRead> AsyncRead for std_io::Take<T> {
+}
