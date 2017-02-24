@@ -15,7 +15,7 @@ extern crate futures;
 
 use std::io as std_io;
 
-use futures::{BoxFuture, Async};
+use futures::{BoxFuture};
 use futures::stream::BoxStream;
 
 /// A convenience typedef around a `Future` whose error component is `io::Error`
@@ -81,28 +81,6 @@ use split::{ReadHalf, WriteHalf};
 /// This trait importantly means that the `read` method only works in the
 /// context of a future's task. The object may panic if used outside of a task.
 pub trait AsyncRead: std_io::Read {
-    /// Tests to see if this I/O object may be readable.
-    ///
-    /// This method returns an `Async<()>` indicating whether the object
-    /// **might** be readable. It is possible that even if this method returns
-    /// `Async::Ready` that a call to `read` would return a `WouldBlock` error.
-    ///
-    /// There is a default implementation for this function which always
-    /// indicates that an I/O object is readable, but objects which can
-    /// implement a finer grained version of this are recommended to do so.
-    ///
-    /// If this function returns `Async::NotReady` then the current future's
-    /// task is arranged to receive a notification when it might not return
-    /// `NotReady`.
-    ///
-    /// # Panics
-    ///
-    /// This method is likely to panic if called from outside the context of a
-    /// future's task.
-    fn poll_read(&mut self) -> Async<()> {
-        Async::Ready(())
-    }
-
     /// Provides a `Stream` and `Sink` interface for reading and writing to this
     /// `Io` object, using `Decode` and `Encode` to read and write the raw data.
     ///
@@ -138,14 +116,8 @@ pub trait AsyncRead: std_io::Read {
 }
 
 impl<T: ?Sized + AsyncRead> AsyncRead for Box<T> {
-    fn poll_read(&mut self) -> Async<()> {
-        (**self).poll_read()
-    }
 }
 impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
-    fn poll_read(&mut self) -> Async<()> {
-        (**self).poll_read()
-    }
 }
 
 /// A trait for writable objects which operated in an asynchronous and
@@ -169,38 +141,11 @@ impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
 /// This trait importantly means that the `write` method only works in the
 /// context of a future's task. The object may panic if used outside of a task.
 pub trait AsyncWrite: std_io::Write {
-    /// Tests to see if this I/O object may be writable.
-    ///
-    /// This method returns an `Async<()>` indicating whether the object
-    /// **might** be writable. It is possible that even if this method returns
-    /// `Async::Ready` that a call to `write` would return a `WouldBlock` error.
-    ///
-    /// There is a default implementation for this function which always
-    /// indicates that an I/O object is writable, but objects which can
-    /// implement a finer grained version of this are recommended to do so.
-    ///
-    /// If this function returns `Async::NotReady` then the current future's
-    /// task is arranged to receive a notification when it might not return
-    /// `NotReady`.
-    ///
-    /// # Panics
-    ///
-    /// This method is likely to panic if called from outside the context of a
-    /// future's task.
-    fn poll_write(&mut self) -> Async<()> {
-        Async::Ready(())
-    }
 }
 
 impl<T: ?Sized + AsyncWrite> AsyncWrite for Box<T> {
-    fn poll_write(&mut self) -> Async<()> {
-        (**self).poll_write()
-    }
 }
 impl<'a, T: ?Sized + AsyncWrite> AsyncWrite for &'a mut T {
-    fn poll_write(&mut self) -> Async<()> {
-        (**self).poll_write()
-    }
 }
 
 impl AsyncRead for std_io::Repeat {}

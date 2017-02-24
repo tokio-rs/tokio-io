@@ -34,12 +34,6 @@ impl<T: AsyncRead> Read for ReadHalf<T> {
 }
 
 impl<T: AsyncRead> AsyncRead for ReadHalf<T> {
-    fn poll_read(&mut self) -> Async<()> {
-        match self.handle.poll_lock() {
-            Async::Ready(mut l) => l.poll_read(),
-            Async::NotReady => Async::NotReady,
-        }
-    }
 }
 
 impl<T: AsyncWrite> Write for WriteHalf<T> {
@@ -59,10 +53,4 @@ impl<T: AsyncWrite> Write for WriteHalf<T> {
 }
 
 impl<T: AsyncWrite> AsyncWrite for WriteHalf<T> {
-    fn poll_write(&mut self) -> Async<()> {
-        match self.handle.poll_lock() {
-            Async::Ready(mut l) => l.poll_write(),
-            Async::NotReady => Async::NotReady,
-        }
-    }
 }
