@@ -11,6 +11,8 @@
 
 #[macro_use]
 extern crate log;
+
+#[macro_use]
 extern crate futures;
 extern crate bytes;
 
@@ -49,7 +51,9 @@ pub mod codec;
 
 mod copy;
 mod flush;
-mod frame;
+mod framed;
+mod framed_read;
+mod framed_write;
 mod lines;
 mod read;
 mod read_exact;
@@ -59,7 +63,7 @@ mod split;
 mod window;
 mod write_all;
 
-use frame::{Codec, Framed};
+use codec::{Decoder, Encoder, Framed};
 use split::{ReadHalf, WriteHalf};
 
 /// A trait for readable objects which operated in an asynchronous and
@@ -181,10 +185,10 @@ pub trait AsyncRead: std_io::Read {
     /// If you want to work more directly with the streams and sink, consider
     /// calling `split` on the `Framed` returned by this method, which will
     /// break them into separate objects, allowing them to interact more easily.
-    fn framed<C: Codec>(self, codec: C) -> Framed<Self, C>
+    fn framed<T: Encoder + Decoder>(self, codec: T) -> Framed<Self, T>
         where Self: AsyncWrite + Sized,
     {
-        frame::framed(self, codec)
+        framed::framed(self, codec)
     }
 
     /// Helper method for splitting this read/write object into two halves.
