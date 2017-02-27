@@ -5,4 +5,5 @@ authors = ["Alex Crichton <alex@alexcrichton.com>"]
 
 [dependencies]
 futures = "0.1"
+bytes = "0.4"
 log = "0.3"

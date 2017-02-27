@@ -10,4 +10,6 @@
 //! [`Stream`]: #
 //! [transports]: #
 
-pub use frame::{EasyBuf, EasyBufMut, Framed, Codec};
+pub use framed::Framed;
+pub use framed_read::{FramedRead, Decoder};
+pub use framed_write::{FramedWrite, Encoder};
