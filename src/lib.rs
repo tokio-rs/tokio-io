@@ -13,16 +13,16 @@
 extern crate log;
 extern crate futures;
 
-use std::io;
+use std::io as std_io;
 
 use futures::{BoxFuture, Async};
 use futures::stream::BoxStream;
 
 /// A convenience typedef around a `Future` whose error component is `io::Error`
-pub type IoFuture<T> = BoxFuture<T, io::Error>;
+pub type IoFuture<T> = BoxFuture<T, std_io::Error>;
 
 /// A convenience typedef around a `Stream` whose error component is `io::Error`
-pub type IoStream<T> = BoxStream<T, io::Error>;
+pub type IoStream<T> = BoxStream<T, std_io::Error>;
 
 /// A convenience macro for working with `io::Result<T>` from the `Read` and
 /// `Write` traits.
@@ -41,6 +41,9 @@ macro_rules! try_nb {
     })
 }
 
+pub mod io;
+pub mod codec;
+
 mod copy;
 mod flush;
 mod frame;
@@ -52,17 +55,9 @@ mod read_until;
 mod split;
 mod window;
 mod write_all;
-pub use self::copy::{copy, Copy};
-pub use self::flush::{flush, Flush};
-pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
-pub use self::lines::{lines, Lines};
-pub use self::read::{read, Read};
-pub use self::read_exact::{read_exact, ReadExact};
-pub use self::read_to_end::{read_to_end, ReadToEnd};
-pub use self::read_until::{read_until, ReadUntil};
-pub use self::split::{ReadHalf, WriteHalf};
-pub use self::window::Window;
-pub use self::write_all::{write_all, WriteAll};
+
+use frame::{Codec, Framed};
+use split::{ReadHalf, WriteHalf};
 
 /// A trait for readable objects which operated in an asynchronous and
 /// futures-aware fashion.
@@ -85,7 +80,7 @@ pub use self::write_all::{write_all, WriteAll};
 ///
 /// This trait importantly means that the `read` method only works in the
 /// context of a future's task. The object may panic if used outside of a task.
-pub trait AsyncRead: io::Read {
+pub trait AsyncRead: std_io::Read {
     /// Tests to see if this I/O object may be readable.
     ///
     /// This method returns an `Async<()>` indicating whether the object
@@ -173,7 +168,7 @@ impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
 ///
 /// This trait importantly means that the `write` method only works in the
 /// context of a future's task. The object may panic if used outside of a task.
-pub trait AsyncWrite: io::Write {
+pub trait AsyncWrite: std_io::Write {
     /// Tests to see if this I/O object may be writable.
     ///
     /// This method returns an `Async<()>` indicating whether the object
@@ -208,6 +203,6 @@ impl<'a, T: ?Sized + AsyncWrite> AsyncWrite for &'a mut T {
     }
 }
 
-impl AsyncRead for io::Repeat {}
-impl AsyncWrite for io::Sink {}
-impl<T: AsyncRead> AsyncRead for io::Take<T> {}
+impl AsyncRead for std_io::Repeat {}
+impl AsyncWrite for std_io::Sink {}
+impl<T: AsyncRead> AsyncRead for std_io::Take<T> {}
