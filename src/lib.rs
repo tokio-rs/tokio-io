@@ -52,9 +52,11 @@ mod read_until;
 mod split;
 mod window;
 mod write_all;
+mod framed_read;
+mod framed_write;
 pub use self::copy::{copy, Copy};
 pub use self::flush::{flush, Flush};
-pub use self::frame::{EasyBuf, EasyBufMut, Framed, Codec};
+pub use self::frame::{EasyBuf, EasyBufMut, Framed};
 pub use self::lines::{lines, Lines};
 pub use self::read::{read, Read};
 pub use self::read_exact::{read_exact, ReadExact};
@@ -63,6 +65,8 @@ pub use self::read_until::{read_until, ReadUntil};
 pub use self::split::{ReadHalf, WriteHalf};
 pub use self::window::Window;
 pub use self::write_all::{write_all, WriteAll};
+pub use self::framed_read::{FramedRead, Decoder};
+pub use self::framed_write::{FramedWrite, Encoder};
 
 /// A trait for readable objects which operated in an asynchronous and
 /// futures-aware fashion.
@@ -125,7 +129,7 @@ pub trait AsyncRead: io::Read {
     /// If you want to work more directly with the streams and sink, consider
     /// calling `split` on the `Framed` returned by this method, which will
     /// break them into separate objects, allowing them to interact more easily.
-    fn framed<C: Codec>(self, codec: C) -> Framed<Self, C>
+    fn framed<C: Encoder + Decoder>(self, codec: C) -> Framed<Self, C>
         where Self: AsyncWrite + Sized,
     {
         frame::framed(self, codec)
@@ -139,6 +143,13 @@ pub trait AsyncRead: io::Read {
         where Self: AsyncWrite + Sized,
     {
         split::split(self)
+    }
+
+    /// Decode bytes read from this stream using a `Decoder`.
+    fn framed_read<D: Decoder>(self, decoder: D) -> FramedRead<Self, D>
+        where Self: Sized
+    {
+        framed_read::framed_read(self, decoder)
     }
 }
 
@@ -194,6 +205,14 @@ pub trait AsyncWrite: io::Write {
     /// future's task.
     fn poll_write(&mut self) -> Async<()> {
         Async::Ready(())
+    }
+
+    /// Constructs a Sink which uses the supplied `Encoder` to translate items to
+    /// bytes to be written out
+    fn framed_write<E: Encoder>(self, encoder: E) -> FramedWrite<Self, E>
+        where Self: Sized
+    {
+        framed_write::framed_write(self, encoder)
     }
 }
 

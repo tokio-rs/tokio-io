@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use futures::{Async, Poll, Stream, Sink, StartSend, AsyncSink};
 
-use {AsyncRead, AsyncWrite};
+use {AsyncRead, AsyncWrite, Encoder, Decoder};
 
 /// A reference counted buffer of bytes.
 ///
@@ -208,139 +208,62 @@ impl fmt::Debug for EasyBuf {
     }
 }
 
-/// Encoding and decoding of frames via buffers.
-///
-/// This trait is used when constructing an instance of `Framed`. It provides
-/// two types: `In`, for decoded input frames, and `Out`, for outgoing frames
-/// that need to be encoded. It also provides methods to actually perform the
-/// encoding and decoding, which work with corresponding buffer types.
-///
-/// The trait itself is implemented on a type that can track state for decoding
-/// or encoding, which is particularly useful for streaming parsers. In many
-/// cases, though, this type will simply be a unit struct (e.g. `struct
-/// HttpCodec`).
-pub trait Codec {
-    /// The type of decoded frames.
-    type In;
-
-    /// The type of frames to be encoded.
-    type Out;
-
-    /// Attempts to decode a frame from the provided buffer of bytes.
-    ///
-    /// This method is called by `Framed` whenever bytes are ready to be parsed.
-    /// The provided buffer of bytes is what's been read so far, and this
-    /// instance of `Decode` can determine whether an entire frame is in the
-    /// buffer and is ready to be returned.
-    ///
-    /// If an entire frame is available, then this instance will remove those
-    /// bytes from the buffer provided and return them as a decoded
-    /// frame. Note that removing bytes from the provided buffer doesn't always
-    /// necessarily copy the bytes, so this should be an efficient operation in
-    /// most circumstances.
-    ///
-    /// If the bytes look valid, but a frame isn't fully available yet, then
-    /// `Ok(None)` is returned. This indicates to the `Framed` instance that
-    /// it needs to read some more bytes before calling this method again.
-    ///
-    /// Finally, if the bytes in the buffer are malformed then an error is
-    /// returned indicating why. This informs `Framed` that the stream is now
-    /// corrupt and should be terminated.
-    fn decode(&mut self, buf: &mut EasyBuf) -> io::Result<Option<Self::In>>;
-
-    /// A default method available to be called when there are no more bytes
-    /// available to be read from the underlying I/O.
-    ///
-    /// This method defaults to calling `decode` and returns an error if
-    /// `Ok(None)` is returned. Typically this doesn't need to be implemented
-    /// unless the framing protocol differs near the end of the stream.
-    fn decode_eof(&mut self, buf: &mut EasyBuf) -> io::Result<Self::In> {
-        match try!(self.decode(buf)) {
-            Some(frame) => Ok(frame),
-            None => Err(io::Error::new(io::ErrorKind::Other,
-                                       "bytes remaining on stream")),
-        }
-    }
-
-    /// Encodes a frame into the buffer provided.
-    ///
-    /// This method will encode `msg` into the byte buffer provided by `buf`.
-    /// The `buf` provided is an internal buffer of the `Framed` instance and
-    /// will be written out when possible.
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()>;
-}
-
-/// A unified `Stream` and `Sink` interface to an underlying `Io` object, using
-/// the `Codec` trait to encode and decode frames.
+/// A unified `Stream` and `Sink` interface to an underlying `AsyncRead + AsyncWrite` object, using
+/// the `Encoder` and `Decoder` traits to encode and decode frames.
 ///
 /// You can acquire a `Framed` instance by using the `Io::framed` adapter.
 pub struct Framed<T, C> {
     upstream: T,
     codec: C,
     eof: bool,
-    is_readable: bool,
     rd: EasyBuf,
     wr: Vec<u8>,
 }
 
 impl<T, C> Stream for Framed<T, C>
-    where T: AsyncRead + AsyncWrite,
-          C: Codec,
+    where T: AsyncRead,
+          C: Decoder<Error=io::Error>,
 {
-    type Item = C::In;
+    type Item = C::Item;
     type Error = io::Error;
 
-    fn poll(&mut self) -> Poll<Option<C::In>, io::Error> {
+    fn poll(&mut self) -> Poll<Option<C::Item>, io::Error> {
+        if self.eof {
+            return Ok(Async::Ready(None))
+        }
         loop {
-            // If the read buffer has any pending data, then it could be
-            // possible that `decode` will return a new frame. We leave it to
-            // the decoder to optimize detecting that more data is required.
-            if self.is_readable {
-                if self.eof {
-                    if self.rd.len() == 0 {
-                        return Ok(None.into())
-                    } else {
-                        let frame = try!(self.codec.decode_eof(&mut self.rd));
-                        return Ok(Async::Ready(Some(frame)))
-                    }
-                }
-                trace!("attempting to decode a frame");
-                if let Some(frame) = try!(self.codec.decode(&mut self.rd)) {
-                    trace!("frame decoded from buffer");
-                    return Ok(Async::Ready(Some(frame)));
-                }
-                self.is_readable = false;
+            if let x@Some(_) = self.codec.decode(&mut self.rd)? {
+                return Ok(Async::Ready(x));
             }
-
-            assert!(!self.eof);
-
-            // Otherwise, try to read more data and try again
-            //
-            // TODO: shouldn't read_to_end, that may read a lot
-            let before = self.rd.len();
-            let ret = self.upstream.read_to_end(&mut self.rd.get_mut());
-            match ret {
-                Ok(_n) => self.eof = true,
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if self.rd.len() == before {
-                        return Ok(Async::NotReady)
-                    }
+            let n = {
+                let mut buffer = self.rd.get_mut();
+                let old = buffer.len();
+                let mut cap = buffer.capacity();
+                if old == cap {
+                    buffer.reserve(cap*2);
+                    cap = buffer.capacity();
                 }
-                Err(e) => return Err(e),
+                buffer.resize(cap, 0);
+                let n = try_nb!(self.upstream.read(&mut buffer[old..]));
+                buffer.resize(old + n, 0);
+                n
+            };
+            if n == 0 {
+                self.eof = true;
+                return self.codec.eof(&mut self.rd).map(Async::Ready);
             }
-            self.is_readable = true;
         }
     }
 }
 
 impl<T, C> Sink for Framed<T, C>
-    where T: AsyncRead + AsyncWrite,
-          C: Codec,
+    where T: AsyncWrite,
+          C: Encoder,
 {
-    type SinkItem = C::Out;
+    type SinkItem = C::Item;
     type SinkError = io::Error;
 
-    fn start_send(&mut self, item: C::Out) -> StartSend<C::Out, io::Error> {
+    fn start_send(&mut self, item: C::Item) -> StartSend<C::Item, io::Error> {
         // If the buffer is already over 8KiB, then attempt to flush it. If after flushing it's
         // *still* over 8KiB, then apply backpressure (reject the send).
         if self.wr.len() > 8 * 1024 {
@@ -350,7 +273,7 @@ impl<T, C> Sink for Framed<T, C>
             }
         }
 
-        try!(self.codec.encode(item, &mut self.wr));
+        self.codec.encode(item, &mut self.wr);
         Ok(AsyncSink::Ready)
     }
 
@@ -380,7 +303,6 @@ pub fn framed<T, C>(io: T, codec: C) -> Framed<T, C> {
         upstream: io,
         codec: codec,
         eof: false,
-        is_readable: false,
         rd: EasyBuf::new(),
         wr: Vec::with_capacity(8 * 1024),
     }
