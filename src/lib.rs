@@ -142,6 +142,17 @@ pub trait AsyncRead: io::Read {
     }
 }
 
+impl<T: ?Sized + AsyncRead> AsyncRead for Box<T> {
+    fn poll_read(&mut self) -> Async<()> {
+        (**self).poll_read()
+    }
+}
+impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
+    fn poll_read(&mut self) -> Async<()> {
+        (**self).poll_read()
+    }
+}
+
 /// A trait for writable objects which operated in an asynchronous and
 /// futures-aware fashion.
 ///
@@ -183,6 +194,17 @@ pub trait AsyncWrite: io::Write {
     /// future's task.
     fn poll_write(&mut self) -> Async<()> {
         Async::Ready(())
+    }
+}
+
+impl<T: ?Sized + AsyncWrite> AsyncWrite for Box<T> {
+    fn poll_write(&mut self) -> Async<()> {
+        (**self).poll_write()
+    }
+}
+impl<'a, T: ?Sized + AsyncWrite> AsyncWrite for &'a mut T {
+    fn poll_write(&mut self) -> Async<()> {
+        (**self).poll_write()
     }
 }
 
