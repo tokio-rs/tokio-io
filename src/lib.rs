@@ -54,6 +54,7 @@ mod flush;
 mod framed;
 mod framed_read;
 mod framed_write;
+mod length_delimited;
 mod lines;
 mod read;
 mod read_exact;
