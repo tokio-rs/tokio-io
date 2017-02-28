@@ -121,6 +121,10 @@ pub trait AsyncRead: std_io::Read {
 
     /// Pull some bytes from this source into the specified `Buf`, returning
     /// how many bytes were read.
+    ///
+    /// The `buf` provided will have bytes read into it and the internal cursor
+    /// will be advanced if any bytes were read. Note that this method typically
+    /// will not reallocate the buffer provided.
     fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error> {
         if !buf.has_remaining_mut() {
             return Ok(Async::Ready(0));
@@ -132,13 +136,7 @@ pub trait AsyncRead: std_io::Read {
 
                 self.prepare_uninitialized_buffer(b);
 
-                match self.read(b) {
-                    Ok(n) => n,
-                    Err(ref e) if e.kind() == std_io::ErrorKind::WouldBlock => {
-                        return Ok(Async::NotReady);
-                    }
-                    Err(e) => return Err(e),
-                }
+                try_nb!(self.read(b))
             };
 
             buf.advance_mut(n);
@@ -214,21 +212,17 @@ impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
 /// context of a future's task. The object may panic if used outside of a task.
 pub trait AsyncWrite: std_io::Write {
     /// Write a `Buf` into this value, returning how many bytes were written.
+    ///
+    /// Note that this method will advance the `buf` provided automatically by
+    /// the number of bytes written.
     fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error> {
         if !buf.has_remaining() {
             return Ok(Async::Ready(0));
         }
 
-        match self.write(buf.bytes()) {
-            Ok(n) => {
-                buf.advance(n);
-                Ok(Async::Ready(n))
-            }
-            Err(ref e) if e.kind() == std_io::ErrorKind::WouldBlock => {
-                return Ok(Async::NotReady);
-            }
-            Err(e) => Err(e),
-        }
+        let n = try_nb!(self.write(buf.bytes()));
+        buf.advance(n);
+        Ok(Async::Ready(n))
     }
 }
 

@@ -23,7 +23,6 @@ struct U32Encoder;
 
 impl Encoder for U32Encoder {
     type Item = u32;
-    type Error = io::Error;
 
     fn encode(&mut self, item: u32, dst: &mut BytesMut) -> io::Result<()> {
         // Reserve space
