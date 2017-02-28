@@ -20,18 +20,43 @@ pub trait Decoder {
     /// The type of decoded frames.
     type Item;
 
-    /// Attempts to decode a message from the provided buffer of bytes.
+    /// Attempts to decode a frame from the provided buffer of bytes.
     ///
-    /// This method is called by `FramedRead` whenever new data becomes
-    /// available. If a complete message is available, its constituent bytes
-    /// should be consumed (for example, with `BytesMut::drain_to`) and
-    /// Ok(Some(message)) returned.
+    /// This method is called by `FramedRead` whenever bytes are ready to be
+    /// parsed.  The provided buffer of bytes is what's been read so far, and
+    /// this instance of `Decode` can determine whether an entire frame is in
+    /// the buffer and is ready to be returned.
+    ///
+    /// If an entire frame is available, then this instance will remove those
+    /// bytes from the buffer provided and return them as a decoded
+    /// frame. Note that removing bytes from the provided buffer doesn't always
+    /// necessarily copy the bytes, so this should be an efficient operation in
+    /// most circumstances.
+    ///
+    /// If the bytes look valid, but a frame isn't fully available yet, then
+    /// `Ok(None)` is returned. This indicates to the `Framed` instance that
+    /// it needs to read some more bytes before calling this method again.
+    ///
+    /// Note that the bytes provided may be empty. If a previous call to
+    /// `decode` consumed all the bytes in the buffer then `decode` will be
+    /// called again until it returns `None`, indicating that more bytes need to
+    /// be read.
+    ///
+    /// Finally, if the bytes in the buffer are malformed then an error is
+    /// returned indicating why. This informs `Framed` that the stream is now
+    /// corrupt and should be terminated.
     fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<Self::Item>>;
 
-    /// A method that can optionally be overridden to handle EOF specially.
+    /// A default method available to be called when there are no more bytes
+    /// available to be read from the underlying I/O.
     ///
-    /// This method will never be provided with bytes that have not previously
-    /// been provided to `decode`.
+    /// This method defaults to calling `decode` and returns an error if
+    /// `Ok(None)` is returned. Typically this doesn't need to be implemented
+    /// unless the framing protocol differs near the end of the stream.
+    ///
+    /// Note that currently the `buf` argument is guaranteed to have bytes in
+    /// it. When there are no more buffered bytes and the internal stream has
+    /// reached EOF then this decoder will no longer be called.
     fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Self::Item> {
         match try!(self.decode(buf)) {
             Some(frame) => Ok(frame),

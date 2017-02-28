@@ -21,7 +21,11 @@ pub trait Encoder {
     /// The type of items consumed by the `Encoder`
     type Item;
 
-    /// Encode a complete Item into a buffer
+    /// Encodes a frame into the buffer provided.
+    ///
+    /// This method will encode `msg` into the byte buffer provided by `buf`.
+    /// The `buf` provided is an internal buffer of the `Framed` instance and
+    /// will be written out when possible.
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut)
               -> io::Result<()>;
 }
