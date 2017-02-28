@@ -21,11 +21,9 @@ pub trait Encoder {
     /// The type of items consumed by the `Encoder`
     type Item;
 
-    /// Encoding error
-    type Error;
-
     /// Encode a complete Item into a buffer
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error>;
+    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut)
+              -> io::Result<()>;
 }
 
 /// A `Sink` of frames encoded to an `AsyncWrite`.
@@ -41,7 +39,10 @@ pub struct FramedWrite2<T> {
 const INITIAL_CAPACITY: usize = 8 * 1024;
 const BACKPRESSURE_BOUNDARY: usize = INITIAL_CAPACITY;
 
-impl<T, E> FramedWrite<T, E> {
+impl<T, E> FramedWrite<T, E>
+    where T: AsyncWrite,
+          E: Encoder,
+{
     /// Creates a new `FramedWrite` with the given `encoder`.
     pub fn new(inner: T, encoder: E) -> FramedWrite<T, E> {
         FramedWrite {
@@ -92,12 +93,11 @@ impl<T, E> FramedWrite<T, E> {
 impl<T, E> Sink for FramedWrite<T, E>
     where T: AsyncWrite,
           E: Encoder,
-          E::Error: From<io::Error>,
 {
     type SinkItem = E::Item;
-    type SinkError = E::Error;
+    type SinkError = io::Error;
 
-    fn start_send(&mut self, item: E::Item) -> StartSend<E::Item, E::Error> {
+    fn start_send(&mut self, item: E::Item) -> StartSend<E::Item, io::Error> {
         self.inner.start_send(item)
     }
 
@@ -128,12 +128,11 @@ pub fn framed_write2<T>(inner: T) -> FramedWrite2<T> {
 
 impl<T> Sink for FramedWrite2<T>
     where T: AsyncWrite + Encoder,
-          T::Error: From<io::Error>,
 {
     type SinkItem = T::Item;
-    type SinkError = T::Error;
+    type SinkError = io::Error;
 
-    fn start_send(&mut self, item: T::Item) -> StartSend<T::Item, T::Error> {
+    fn start_send(&mut self, item: T::Item) -> StartSend<T::Item, io::Error> {
         // If the buffer is already over 8KiB, then attempt to flush it. If after flushing it's
         // *still* over 8KiB, then apply backpressure (reject the send).
         if self.buffer.len() >= BACKPRESSURE_BOUNDARY {
@@ -177,14 +176,13 @@ impl<T> Sink for FramedWrite2<T>
 
 impl<T: Decoder> Decoder for FramedWrite2<T> {
     type Item = T::Item;
-    type Error = T::Error;
 
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<T::Item>, T::Error> {
+    fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<T::Item>> {
         self.inner.decode(src)
     }
 
-    fn eof(&mut self, src: &mut BytesMut) -> Result<Option<T::Item>, T::Error> {
-        self.inner.eof(src)
+    fn decode_eof(&mut self, src: &mut BytesMut) -> io::Result<T::Item> {
+        self.inner.decode_eof(src)
     }
 }
 

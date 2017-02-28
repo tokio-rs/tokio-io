@@ -20,26 +20,24 @@ pub trait Decoder {
     /// The type of decoded frames.
     type Item;
 
-    /// The type of fatal decoding errors.
-    ///
-    /// Non-fatal errors should be encoded in Item values.
-    type Error;
-
     /// Attempts to decode a message from the provided buffer of bytes.
     ///
     /// This method is called by `FramedRead` whenever new data becomes
     /// available. If a complete message is available, its constituent bytes
     /// should be consumed (for example, with `BytesMut::drain_to`) and
     /// Ok(Some(message)) returned.
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error>;
+    fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<Self::Item>>;
 
     /// A method that can optionally be overridden to handle EOF specially.
     ///
     /// This method will never be provided with bytes that have not previously
     /// been provided to `decode`.
-    #[allow(unused_variables)]
-    fn eof(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        Ok(None)
+    fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Self::Item> {
+        match try!(self.decode(buf)) {
+            Some(frame) => Ok(frame),
+            None => Err(io::Error::new(io::ErrorKind::Other,
+                                       "bytes remaining on stream")),
+        }
     }
 }
 
@@ -59,7 +57,10 @@ const INITIAL_CAPACITY: usize = 8 * 1024;
 
 // ===== impl FramedRead =====
 
-impl<T, D> FramedRead<T, D> {
+impl<T, D> FramedRead<T, D>
+    where T: AsyncRead,
+          D: Decoder,
+{
     /// Creates a new `FramedRead` with the given `decoder`.
     pub fn new(inner: T, decoder: D) -> FramedRead<T, D> {
         FramedRead {
@@ -110,12 +111,11 @@ impl<T, D> FramedRead<T, D> {
 impl<T, D> Stream for FramedRead<T, D>
     where T: AsyncRead,
           D: Decoder,
-          D::Error: From<io::Error>
 {
     type Item = D::Item;
-    type Error = D::Error;
+    type Error = io::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Poll<Option<Self::Item>, io::Error> {
         self.inner.poll()
     }
 }
@@ -157,10 +157,9 @@ impl<T> FramedRead2<T> {
 
 impl<T> Stream for FramedRead2<T>
     where T: AsyncRead + Decoder,
-          T::Error: From<io::Error>
 {
     type Item = T::Item;
-    type Error = T::Error;
+    type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {
@@ -172,8 +171,8 @@ impl<T> Stream for FramedRead2<T>
                     if self.buffer.is_empty() {
                         return Ok(None.into())
                     } else {
-                        let frame = try!(self.inner.eof(&mut self.buffer));
-                        return Ok(Async::Ready(frame));
+                        let frame = try!(self.inner.decode_eof(&mut self.buffer));
+                        return Ok(Async::Ready(Some(frame)));
                     }
                 }
 

@@ -17,7 +17,10 @@ pub struct Framed<T, U> {
 
 pub struct Fuse<T, U>(pub T, pub U);
 
-pub fn framed<T, U>(inner: T, codec: U) -> Framed<T, U> {
+pub fn framed<T, U>(inner: T, codec: U) -> Framed<T, U>
+    where T: AsyncRead + AsyncWrite,
+          U: Decoder + Encoder,
+{
     Framed {
         inner: framed_read2(framed_write2(Fuse(inner, codec))),
     }
@@ -26,10 +29,9 @@ pub fn framed<T, U>(inner: T, codec: U) -> Framed<T, U> {
 impl<T, U> Stream for Framed<T, U>
     where T: AsyncRead,
           U: Decoder,
-          U::Error: From<io::Error>
 {
     type Item = U::Item;
-    type Error = U::Error;
+    type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.inner.poll()
@@ -39,10 +41,9 @@ impl<T, U> Stream for Framed<T, U>
 impl<T, U> Sink for Framed<T, U>
     where T: AsyncWrite,
           U: Encoder,
-          U::Error: From<io::Error>
 {
     type SinkItem = U::Item;
-    type SinkError = U::Error;
+    type SinkError = io::Error;
 
     fn start_send(&mut self,
                   item: Self::SinkItem)
@@ -85,22 +86,20 @@ impl<T: AsyncWrite, U> AsyncWrite for Fuse<T, U> {
 
 impl<T, U: Decoder> Decoder for Fuse<T, U> {
     type Item = U::Item;
-    type Error = U::Error;
 
-    fn decode(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+    fn decode(&mut self, buffer: &mut BytesMut) -> io::Result<Option<Self::Item>> {
         self.1.decode(buffer)
     }
 
-    fn eof(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        self.1.eof(buffer)
+    fn decode_eof(&mut self, buffer: &mut BytesMut) -> io::Result<Self::Item> {
+        self.1.decode_eof(buffer)
     }
 }
 
 impl<T, U: Encoder> Encoder for Fuse<T, U> {
     type Item = U::Item;
-    type Error = U::Error;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> io::Result<()> {
         self.1.encode(item, dst)
     }
 }
