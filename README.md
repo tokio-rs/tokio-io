@@ -6,6 +6,11 @@ Core I/O abstractions for the Tokio stack.
 
 [Documentation](http://alexcrichton.com/tokio-io)
 
+# Usage
+
+Note that this is a WIP project currently. The intention is to eventually
+replace much of the functionality of the `tokio_core::io` module.
+
 # License
 
 `tokio-io` is primarily distributed under the terms of both the MIT license
