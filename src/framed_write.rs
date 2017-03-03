@@ -43,10 +43,7 @@ pub struct FramedWrite2<T> {
 const INITIAL_CAPACITY: usize = 8 * 1024;
 const BACKPRESSURE_BOUNDARY: usize = INITIAL_CAPACITY;
 
-impl<T, E> FramedWrite<T, E>
-    where T: AsyncWrite,
-          E: Encoder,
-{
+impl<T, E> FramedWrite<T, E> {
     /// Creates a new `FramedWrite` with the given `encoder`.
     pub fn new(inner: T, encoder: E) -> FramedWrite<T, E> {
         FramedWrite {

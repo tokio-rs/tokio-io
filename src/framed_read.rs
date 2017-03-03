@@ -82,10 +82,7 @@ const INITIAL_CAPACITY: usize = 8 * 1024;
 
 // ===== impl FramedRead =====
 
-impl<T, D> FramedRead<T, D>
-    where T: AsyncRead,
-          D: Decoder,
-{
+impl<T, D> FramedRead<T, D> {
     /// Creates a new `FramedRead` with the given `decoder`.
     pub fn new(inner: T, decoder: D) -> FramedRead<T, D> {
         FramedRead {

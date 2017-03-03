@@ -18,8 +18,6 @@ pub struct Framed<T, U> {
 pub struct Fuse<T, U>(pub T, pub U);
 
 pub fn framed<T, U>(inner: T, codec: U) -> Framed<T, U>
-    where T: AsyncRead + AsyncWrite,
-          U: Decoder + Encoder,
 {
     Framed {
         inner: framed_read2(framed_write2(Fuse(inner, codec))),
