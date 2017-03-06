@@ -53,7 +53,9 @@ impl<T, E> FramedWrite<T, E>
             inner: framed_write2(Fuse(inner, encoder)),
         }
     }
+}
 
+impl<T, E> FramedWrite<T, E> {
     /// Returns a reference to the underlying I/O stream wrapped by
     /// `FramedWrite`.
     ///
