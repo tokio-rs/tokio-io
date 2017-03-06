@@ -128,6 +128,29 @@ fn read_partial_would_block_then_err() {
     assert_eq!(io::ErrorKind::Other, framed.poll().unwrap_err().kind());
 }
 
+#[test]
+fn huge_size() {
+    let data = [0; 32 * 1024];
+
+    let mut framed = FramedRead::new(&data[..], BigDecoder);
+    assert_eq!(Ready(Some(0)), framed.poll().unwrap());
+    assert_eq!(Ready(None), framed.poll().unwrap());
+
+    struct BigDecoder;
+
+    impl Decoder for BigDecoder {
+        type Item = u32;
+
+        fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
+            if buf.len() < 32 * 1024 {
+                return Ok(None);
+            }
+            buf.drain_to(32 * 1024);
+            Ok(Some(0))
+        }
+    }
+}
+
 // ===== Mock ======
 
 struct Mock {

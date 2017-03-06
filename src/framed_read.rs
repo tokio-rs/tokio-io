@@ -213,7 +213,10 @@ impl<T> Stream for FramedRead2<T>
 
             assert!(!self.eof);
 
-            // Otherwise, try to read more data and try again
+            // Otherwise, try to read more data and try again. Make sure we've
+            // got room for at least one byte to read to ensure that we don't
+            // get a spurious 0 that looks like EF
+            self.buffer.reserve(1);
             if 0 == try_ready!(self.inner.read_buf(&mut self.buffer)) {
                 self.eof = true;
             }

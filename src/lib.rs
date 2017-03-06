@@ -190,6 +190,12 @@ impl<'a, T: ?Sized + AsyncRead> AsyncRead for &'a mut T {
     }
 }
 
+impl<'a> AsyncRead for &'a [u8] {
+    unsafe fn prepare_uninitialized_buffer(&self, _buf: &mut [u8]) -> bool {
+        false
+    }
+}
+
 /// A trait for writable objects which operated in an asynchronous and
 /// futures-aware fashion.
 ///
