@@ -95,6 +95,9 @@ impl<T: Write, U> Write for Fuse<T, U> {
 }
 
 impl<T: AsyncWrite, U> AsyncWrite for Fuse<T, U> {
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        self.0.shutdown()
+    }
 }
 
 impl<T, U: Decoder> Decoder for Fuse<T, U> {

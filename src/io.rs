@@ -16,6 +16,7 @@ pub use read::{read, Read};
 pub use read_exact::{read_exact, ReadExact};
 pub use read_to_end::{read_to_end, ReadToEnd};
 pub use read_until::{read_until, ReadUntil};
+pub use shutdown::{shutdown, Shutdown};
 pub use split::{ReadHalf, WriteHalf};
 pub use window::Window;
 pub use write_all::{write_all, WriteAll};

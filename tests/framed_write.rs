@@ -5,7 +5,7 @@ extern crate futures;
 use tokio_io::AsyncWrite;
 use tokio_io::codec::{Encoder, FramedWrite};
 
-use futures::{Sink};
+use futures::{Sink, Poll};
 use bytes::{BytesMut, BufMut, BigEndian};
 
 use std::io::{self, Write};
@@ -126,4 +126,7 @@ impl Write for Mock {
 }
 
 impl AsyncWrite for Mock {
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        Ok(().into())
+    }
 }

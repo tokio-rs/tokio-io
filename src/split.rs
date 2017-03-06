@@ -1,6 +1,6 @@
 use std::io::{self, Read, Write};
 
-use futures::Async;
+use futures::{Async, Poll};
 use futures::sync::BiLock;
 
 use {AsyncRead, AsyncWrite};
@@ -53,4 +53,10 @@ impl<T: AsyncWrite> Write for WriteHalf<T> {
 }
 
 impl<T: AsyncWrite> AsyncWrite for WriteHalf<T> {
+    fn shutdown(&mut self) -> Poll<(), io::Error> {
+        match self.handle.poll_lock() {
+            Async::Ready(mut l) => l.shutdown(),
+            Async::NotReady => Err(would_block()),
+        }
+    }
 }
