@@ -1,10 +1,11 @@
+use std::io;
+use std::fmt;
+
 use AsyncRead;
 use framed::Fuse;
 
 use futures::{Async, Poll, Stream, Sink, StartSend};
 use bytes::BytesMut;
-
-use std::io;
 
 /// Decoding of frames via buffers.
 ///
@@ -165,6 +166,18 @@ impl<T, D> Sink for FramedRead<T, D>
     }
 }
 
+impl<T, U> fmt::Debug for FramedRead<T, U>
+    where T: fmt::Debug,
+          U: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FramedRead")
+         .field("io", &self.inner.get_ref().0)
+         .field("decoder", &self.inner.get_ref().1)
+         .finish()
+    }
+}
+
 // ===== impl FramedRead2 =====
 
 pub fn framed_read2<T>(inner: T) -> FramedRead2<T> {
@@ -177,6 +190,10 @@ pub fn framed_read2<T>(inner: T) -> FramedRead2<T> {
 }
 
 impl<T> FramedRead2<T> {
+    pub fn get_ref(&self) -> &T {
+        &self.inner
+    }
+
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }

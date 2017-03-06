@@ -1,11 +1,12 @@
+use std::io::{self, Read};
+use std::fmt;
+
 use {AsyncRead, AsyncWrite};
 use codec::Decoder;
 use framed::Fuse;
 
 use futures::{Async, AsyncSink, Poll, Stream, Sink, StartSend};
 use bytes::BytesMut;
-
-use std::io::{self, Read};
 
 macro_rules! mock {
     ($($x:expr,)*) => {{
@@ -123,12 +124,30 @@ impl<T, D> Stream for FramedWrite<T, D>
     }
 }
 
+impl<T, U> fmt::Debug for FramedWrite<T, U>
+    where T: fmt::Debug,
+          U: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FramedWrite")
+         .field("io", &self.inner.get_ref().0)
+         .field("encoder", &self.inner.get_ref().1)
+         .finish()
+    }
+}
+
 // ===== impl FramedWrite2 =====
 
 pub fn framed_write2<T>(inner: T) -> FramedWrite2<T> {
     FramedWrite2 {
         inner: inner,
         buffer: BytesMut::with_capacity(INITIAL_CAPACITY),
+    }
+}
+
+impl<T> FramedWrite2<T> {
+    pub fn get_ref(&self) -> &T {
+        &self.inner
     }
 }
 

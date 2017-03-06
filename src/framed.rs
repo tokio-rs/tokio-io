@@ -1,11 +1,12 @@
+use std::io::{self, Read, Write};
+use std::fmt;
+
 use {AsyncRead, AsyncWrite};
 use framed_read::{framed_read2, FramedRead2, Decoder};
 use framed_write::{framed_write2, FramedWrite2, Encoder};
 
 use futures::{Stream, Sink, StartSend, Poll};
 use bytes::{BytesMut};
-
-use std::io::{self, Read, Write};
 
 /// A unified `Stream` and `Sink` interface to an underlying I/O object, using
 /// the `Encoder` and `Decoder` traits to encode and decode frames.
@@ -54,6 +55,18 @@ impl<T, U> Sink for Framed<T, U>
 
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         self.inner.get_mut().poll_complete()
+    }
+}
+
+impl<T, U> fmt::Debug for Framed<T, U>
+    where T: fmt::Debug,
+          U: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Framed")
+         .field("io", &self.inner.get_ref().get_ref().0)
+         .field("codec", &self.inner.get_ref().get_ref().1)
+         .finish()
     }
 }
 
