@@ -92,7 +92,9 @@ impl<T, D> FramedRead<T, D>
             inner: framed_read2(Fuse(inner, decoder)),
         }
     }
+}
 
+impl<T, D> FramedRead<T, D> {
     /// Returns a reference to the underlying I/O stream wrapped by
     /// `FramedRead`.
     ///
