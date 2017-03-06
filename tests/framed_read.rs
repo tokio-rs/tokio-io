@@ -151,6 +151,15 @@ fn huge_size() {
     }
 }
 
+#[test]
+fn data_remaining_is_error() {
+    let data = [0; 5];
+
+    let mut framed = FramedRead::new(&data[..], U32Decoder);
+    assert_eq!(Ready(Some(0)), framed.poll().unwrap());
+    assert!(framed.poll().is_err());
+}
+
 // ===== Mock ======
 
 struct Mock {
