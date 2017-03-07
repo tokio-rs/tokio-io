@@ -315,3 +315,6 @@ impl<T: AsyncWrite> AsyncWrite for std_io::BufWriter<T> {
         self.get_mut().shutdown()
     }
 }
+
+impl<T: AsyncRead> AsyncRead for std_io::BufReader<T> {
+}
