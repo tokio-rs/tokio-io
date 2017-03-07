@@ -188,7 +188,7 @@ impl<T> Sink for FramedWrite2<T>
 
             // TODO: Add a way to `bytes` to do this w/o returning the drained
             // data.
-            let _ = self.buffer.drain_to(n);
+            let _ = self.buffer.split_to(n);
         }
 
         // Try flushing the underlying IO
