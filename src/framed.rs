@@ -111,7 +111,7 @@ impl<T, U: Decoder> Decoder for Fuse<T, U> {
         self.1.decode(buffer)
     }
 
-    fn decode_eof(&mut self, buffer: &mut BytesMut) -> io::Result<Self::Item> {
+    fn decode_eof(&mut self, buffer: &mut BytesMut) -> io::Result<Option<Self::Item>> {
         self.1.decode_eof(buffer)
     }
 }

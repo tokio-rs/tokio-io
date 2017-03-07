@@ -51,17 +51,26 @@ pub trait Decoder {
     /// available to be read from the underlying I/O.
     ///
     /// This method defaults to calling `decode` and returns an error if
-    /// `Ok(None)` is returned. Typically this doesn't need to be implemented
-    /// unless the framing protocol differs near the end of the stream.
+    /// `Ok(None)` is returned while there is unconsumed data in `buf`.
+    /// Typically this doesn't need to be implemented unless the framing
+    /// protocol differs near the end of the stream.
     ///
-    /// Note that currently the `buf` argument is guaranteed to have bytes in
-    /// it. When there are no more buffered bytes and the internal stream has
-    /// reached EOF then this decoder will no longer be called.
-    fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Self::Item> {
+    /// Note that the `buf` argument may be empty. If a previous call to
+    /// `decode_eof` consumed all the bytes in the bufer, `decode_eof` will be
+    /// called again until it returns `None`, indicating that there are no more
+    /// frames to yield. This behavior enables returning finalization frames
+    /// that may not be based on inbound data.
+    fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Option<Self::Item>> {
         match try!(self.decode(buf)) {
-            Some(frame) => Ok(frame),
-            None => Err(io::Error::new(io::ErrorKind::Other,
-                                       "bytes remaining on stream")),
+            Some(frame) => Ok(Some(frame)),
+            None => {
+                if buf.is_empty() {
+                    Ok(None)
+                } else {
+                    Err(io::Error::new(io::ErrorKind::Other,
+                                       "bytes remaining on stream"))
+                }
+            }
         }
     }
 }
@@ -213,17 +222,15 @@ impl<T> Stream for FramedRead2<T>
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {
-            // If the read buffer has any pending data, then it could be
-            // possible that `decode` will return a new frame. We leave it to
-            // the decoder to optimize detecting that more data is required.
+            // Repeatedly call `decode` or `decode_eof` as long as it is
+            // "readable". Readable is defined as not having returned `None`. If
+            // the upstream has returned EOF, and the decoder is no longer
+            // readable, it can be assumed that the decoder will never become
+            // readable again, at which point the stream is terminated.
             if self.is_readable {
                 if self.eof {
-                    if self.buffer.is_empty() {
-                        return Ok(None.into())
-                    } else {
-                        let frame = try!(self.inner.decode_eof(&mut self.buffer));
-                        return Ok(Async::Ready(Some(frame)));
-                    }
+                    let frame = try!(self.inner.decode_eof(&mut self.buffer));
+                    return Ok(Async::Ready(frame));
                 }
 
                 trace!("attempting to decode a frame");
