@@ -317,4 +317,7 @@ impl<T: AsyncWrite> AsyncWrite for std_io::BufWriter<T> {
 }
 
 impl<T: AsyncRead> AsyncRead for std_io::BufReader<T> {
+    unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
+        self.get_ref().prepare_uninitialized_buffer(buf)
+    }
 }
