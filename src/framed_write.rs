@@ -206,7 +206,7 @@ impl<T: Decoder> Decoder for FramedWrite2<T> {
         self.inner.decode(src)
     }
 
-    fn decode_eof(&mut self, src: &mut BytesMut) -> io::Result<T::Item> {
+    fn decode_eof(&mut self, src: &mut BytesMut) -> io::Result<Option<T::Item>> {
         self.inner.decode_eof(src)
     }
 }

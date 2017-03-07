@@ -160,6 +160,34 @@ fn data_remaining_is_error() {
     assert!(framed.poll().is_err());
 }
 
+#[test]
+fn multi_frames_on_eof() {
+    struct MyDecoder(Vec<u32>);
+
+    impl Decoder for MyDecoder {
+        type Item = u32;
+
+        fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
+            unreachable!();
+        }
+
+        fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
+            if self.0.is_empty() {
+                return Ok(None);
+            }
+
+            Ok(Some(self.0.remove(0)))
+        }
+    }
+
+    let mut framed = FramedRead::new(mock!(), MyDecoder(vec![0, 1, 2, 3]));
+    assert_eq!(Ready(Some(0)), framed.poll().unwrap());
+    assert_eq!(Ready(Some(1)), framed.poll().unwrap());
+    assert_eq!(Ready(Some(2)), framed.poll().unwrap());
+    assert_eq!(Ready(Some(3)), framed.poll().unwrap());
+    assert_eq!(Ready(None), framed.poll().unwrap());
+}
+
 // ===== Mock ======
 
 struct Mock {
