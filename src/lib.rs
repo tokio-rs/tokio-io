@@ -17,6 +17,7 @@ extern crate futures;
 extern crate bytes;
 
 use std::io as std_io;
+use std::io::Write;
 
 use futures::{Async, Poll, BoxFuture};
 use futures::stream::BoxStream;
@@ -306,4 +307,11 @@ impl AsyncWrite for std_io::Sink {
 // TODO: Implement `prepare_uninitialized_buffer` for `io::Take`.
 // This is blocked on rust-lang/rust#27269
 impl<T: AsyncRead> AsyncRead for std_io::Take<T> {
+}
+
+impl<T: AsyncWrite> AsyncWrite for std_io::BufWriter<T> {
+    fn shutdown(&mut self) -> Poll<(), std_io::Error> {
+        try_nb!(self.flush());
+        self.get_mut().shutdown()
+    }
 }
