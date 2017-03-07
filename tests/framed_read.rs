@@ -30,7 +30,7 @@ impl Decoder for U32Decoder {
             return Ok(None);
         }
 
-        let n = buf.drain_to(4).into_buf().get_u32::<BigEndian>();
+        let n = buf.split_to(4).into_buf().get_u32::<BigEndian>();
         Ok(Some(n))
     }
 }
@@ -145,7 +145,7 @@ fn huge_size() {
             if buf.len() < 32 * 1024 {
                 return Ok(None);
             }
-            buf.drain_to(32 * 1024);
+            buf.split_to(32 * 1024);
             Ok(Some(0))
         }
     }
