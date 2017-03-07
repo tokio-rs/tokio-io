@@ -56,6 +56,10 @@ impl<T, U> Sink for Framed<T, U>
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         self.inner.get_mut().poll_complete()
     }
+
+    fn close(&mut self) -> Poll<(), Self::SinkError> {
+        self.inner.get_mut().close()
+    }
 }
 
 impl<T, U> fmt::Debug for Framed<T, U>

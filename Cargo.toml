@@ -4,9 +4,14 @@ version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 
 [dependencies]
-futures = { version = "0.1", default-features = false }
+#futures = { version = "0.1", default-features = false }
 bytes = { git = "https://github.com/carllerche/bytes" }
 log = "0.3"
+
+[dependencies.futures]
+git = "https://github.com/alexcrichton/futures-rs"
+branch = "close"
+default-features = false
 
 [features]
 default = ["use_std"]

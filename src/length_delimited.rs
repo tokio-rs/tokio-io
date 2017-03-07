@@ -143,6 +143,10 @@ impl<T: AsyncWrite, B: IntoBuf> Sink for Framed<T, B> {
     fn poll_complete(&mut self) -> Poll<(), io::Error> {
         self.inner.poll_complete()
     }
+
+    fn close(&mut self) -> Poll<(), io::Error> {
+        self.inner.close()
+    }
 }
 
 // ===== impl FramedRead =====
@@ -203,6 +207,10 @@ impl<T: Sink> Sink for FramedRead<T> {
 
     fn poll_complete(&mut self) -> Poll<(), T::SinkError> {
         self.inner.poll_complete()
+    }
+
+    fn close(&mut self) -> Poll<(), T::SinkError> {
+        self.inner.close()
     }
 }
 
@@ -433,6 +441,11 @@ impl<T: AsyncWrite, B: IntoBuf> Sink for FramedWrite<T, B> {
         try_nb!(self.inner.flush());
 
         return Ok(Async::Ready(()));
+    }
+
+    fn close(&mut self) -> Poll<(), io::Error> {
+        try_ready!(self.poll_complete());
+        self.inner.shutdown()
     }
 }
 

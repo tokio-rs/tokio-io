@@ -111,6 +111,10 @@ impl<T, E> Sink for FramedWrite<T, E>
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         self.inner.poll_complete()
     }
+
+    fn close(&mut self) -> Poll<(), io::Error> {
+        self.inner.close()
+    }
 }
 
 impl<T, D> Stream for FramedWrite<T, D>
@@ -196,6 +200,11 @@ impl<T> Sink for FramedWrite2<T>
 
         trace!("framed transport flushed");
         return Ok(Async::Ready(()));
+    }
+
+    fn close(&mut self) -> Poll<(), io::Error> {
+        try_ready!(self.poll_complete());
+        self.inner.shutdown()
     }
 }
 

@@ -164,6 +164,10 @@ impl<T, D> Sink for FramedRead<T, D>
     fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
         self.inner.inner.0.poll_complete()
     }
+
+    fn close(&mut self) -> Poll<(), Self::SinkError> {
+        self.inner.inner.0.close()
+    }
 }
 
 impl<T, U> fmt::Debug for FramedRead<T, U>
