@@ -5,6 +5,7 @@ use futures::{Future, Poll};
 
 use AsyncRead;
 
+#[derive(Debug)]
 enum State<R, T> {
     Pending {
         rd: R,
@@ -29,6 +30,7 @@ pub fn read<R, T>(rd: R, buf: T) -> Read<R, T>
 /// a buffer.
 ///
 /// Created by the [`read`] function.
+#[derive(Debug)]
 pub struct Read<R, T> {
     state: State<R, T>,
 }

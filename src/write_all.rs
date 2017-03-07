@@ -10,10 +10,12 @@ use AsyncWrite;
 /// This is created by the [`write_all`] top-level method.
 ///
 /// [`write_all`]: fn.write_all.html
+#[derive(Debug)]
 pub struct WriteAll<A, T> {
     state: State<A, T>,
 }
 
+#[derive(Debug)]
 enum State<A, T> {
     Writing {
         a: A,

@@ -10,6 +10,7 @@ use {AsyncRead, AsyncWrite};
 /// bytes copied or an error if one happens.
 ///
 /// [`copy`]: fn.copy.html
+#[derive(Debug)]
 pub struct Copy<R, W> {
     reader: Option<R>,
     read_done: bool,

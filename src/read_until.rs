@@ -11,10 +11,12 @@ use AsyncRead;
 /// Created by the [`read_until`] function.
 ///
 /// [`read_until`]: fn.read_until.html
+#[derive(Debug)]
 pub struct ReadUntil<A> {
     state: State<A>,
 }
 
+#[derive(Debug)]
 enum State<A> {
     Reading {
         a: A,
