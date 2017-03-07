@@ -167,11 +167,11 @@ fn multi_frames_on_eof() {
     impl Decoder for MyDecoder {
         type Item = u32;
 
-        fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
+        fn decode(&mut self, _buf: &mut BytesMut) -> io::Result<Option<u32>> {
             unreachable!();
         }
 
-        fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
+        fn decode_eof(&mut self, _buf: &mut BytesMut) -> io::Result<Option<u32>> {
             if self.0.is_empty() {
                 return Ok(None);
             }
