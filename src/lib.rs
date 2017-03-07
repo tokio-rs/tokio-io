@@ -310,6 +310,14 @@ impl AsyncWrite for std_io::Sink {
 impl<T: AsyncRead> AsyncRead for std_io::Take<T> {
 }
 
+// TODO: Implement `prepare_uninitialized_buffer` when upstream exposes inner
+// parts
+impl<T, U> AsyncRead for std_io::Chain<T, U>
+    where T: AsyncRead,
+          U: AsyncRead,
+{
+}
+
 impl<T: AsyncWrite> AsyncWrite for std_io::BufWriter<T> {
     fn shutdown(&mut self) -> Poll<(), std_io::Error> {
         try_nb!(self.flush());
