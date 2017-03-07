@@ -10,6 +10,7 @@ before_script:
 script:
   - cargo build
   - cargo test
+  - cargo test --no-default-features --features use_std
   - cargo doc --no-deps
 
 after_success:

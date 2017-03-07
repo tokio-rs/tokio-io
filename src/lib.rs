@@ -19,7 +19,8 @@ extern crate bytes;
 use std::io as std_io;
 use std::io::Write;
 
-use futures::{Async, Poll, BoxFuture};
+use futures::{Async, Poll};
+use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 
 use bytes::{Buf, BufMut};
