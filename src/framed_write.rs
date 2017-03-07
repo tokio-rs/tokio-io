@@ -134,8 +134,9 @@ impl<T, U> fmt::Debug for FramedWrite<T, U>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FramedWrite")
-         .field("io", &self.inner.get_ref().0)
+         .field("inner", &self.inner.get_ref().0)
          .field("encoder", &self.inner.get_ref().1)
+         .field("buffer", &self.inner.buffer)
          .finish()
     }
 }

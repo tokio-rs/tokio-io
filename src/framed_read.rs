@@ -1,5 +1,4 @@
-use std::io;
-use std::fmt;
+use std::{fmt, io};
 
 use AsyncRead;
 use framed::Fuse;
@@ -170,15 +169,18 @@ impl<T, D> Sink for FramedRead<T, D>
     }
 }
 
-impl<T, U> fmt::Debug for FramedRead<T, U>
+impl<T, D> fmt::Debug for FramedRead<T, D>
     where T: fmt::Debug,
-          U: fmt::Debug,
+          D: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FramedRead")
-         .field("io", &self.inner.get_ref().0)
-         .field("decoder", &self.inner.get_ref().1)
-         .finish()
+            .field("inner", &self.inner.inner.0)
+            .field("decoder", &self.inner.inner.1)
+            .field("eof", &self.inner.eof)
+            .field("is_readable", &self.inner.is_readable)
+            .field("buffer", &self.inner.buffer)
+            .finish()
     }
 }
 

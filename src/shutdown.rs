@@ -12,6 +12,7 @@ use AsyncWrite;
 /// Created by the [`shutdown`] function.
 ///
 /// [`shutdown`]: fn.shutdown.html
+#[derive(Debug)]
 pub struct Shutdown<A> {
     a: Option<A>,
 }

@@ -17,6 +17,7 @@ use std::ops;
 /// combinator in this crate. Data can be sliced via `Window`, consumed by
 /// `write_all`, and then earned back once the write operation finishes through
 /// the `into_inner` method on this type.
+#[derive(Debug)]
 pub struct Window<T> {
     inner: T,
     range: ops::Range<usize>,

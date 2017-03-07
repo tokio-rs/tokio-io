@@ -5,7 +5,7 @@ use bytes::buf::Chain;
 
 use futures::{Async, AsyncSink, Stream, Sink, StartSend, Poll};
 
-use std::cmp;
+use std::{cmp, fmt};
 use std::io::{self, Cursor};
 
 /// Configure length delimited `FramedRead`, `FramedWrite`, and `Framed` values.
@@ -50,10 +50,12 @@ pub struct Framed<T, B: IntoBuf = BytesMut> {
 /// See [module level] documentation for more detail.
 ///
 /// [module level]: index.html
+#[derive(Debug)]
 pub struct FramedRead<T> {
     inner: codec::FramedRead<T, Decoder>,
 }
 
+#[derive(Debug)]
 struct Decoder {
     // Configuration values
     builder: Builder,
@@ -146,6 +148,17 @@ impl<T: AsyncWrite, B: IntoBuf> Sink for Framed<T, B> {
 
     fn close(&mut self) -> Poll<(), io::Error> {
         self.inner.close()
+    }
+}
+
+impl<T, B: IntoBuf> fmt::Debug for Framed<T, B>
+    where T: fmt::Debug,
+          B::Buf: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Framed")
+            .field("inner", &self.inner)
+            .finish()
     }
 }
 
@@ -471,6 +484,19 @@ impl<T: AsyncRead, U: IntoBuf> AsyncRead for FramedWrite<T, U> {
 
     unsafe fn prepare_uninitialized_buffer(&self, buf: &mut [u8]) -> bool {
         self.get_ref().prepare_uninitialized_buffer(buf)
+    }
+}
+
+impl<T, B: IntoBuf> fmt::Debug for FramedWrite<T, B>
+    where T: fmt::Debug,
+          B::Buf: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FramedWrite")
+            .field("inner", &self.inner)
+            .field("builder", &self.builder)
+            .field("frame", &self.frame)
+            .finish()
     }
 }
 

@@ -11,6 +11,7 @@ use AsyncWrite;
 /// Created by the [`flush`] function.
 ///
 /// [`flush`]: fn.flush.html
+#[derive(Debug)]
 pub struct Flush<A> {
     a: Option<A>,
 }

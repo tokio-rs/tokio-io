@@ -6,11 +6,13 @@ use futures::sync::BiLock;
 use {AsyncRead, AsyncWrite};
 
 /// The readable half of an object returned from `AsyncRead::split`.
+#[derive(Debug)]
 pub struct ReadHalf<T> {
     handle: BiLock<T>,
 }
 
 /// The writable half of an object returned from `AsyncRead::split`.
+#[derive(Debug)]
 pub struct WriteHalf<T> {
     handle: BiLock<T>,
 }

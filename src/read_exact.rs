@@ -11,10 +11,12 @@ use AsyncRead;
 /// Created by the [`read_exact`] function.
 ///
 /// [`read_exact`]: fn.read_exact.html
+#[derive(Debug)]
 pub struct ReadExact<A, T> {
     state: State<A, T>,
 }
 
+#[derive(Debug)]
 enum State<A, T> {
     Reading {
         a: A,
