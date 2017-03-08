@@ -51,6 +51,8 @@ macro_rules! try_nb {
 pub mod io;
 pub mod codec;
 
+mod buf_reader;
+mod buf_writer;
 mod copy;
 mod flush;
 mod framed;
@@ -66,6 +68,8 @@ mod shutdown;
 mod split;
 mod window;
 mod write_all;
+
+const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 
 use codec::{Decoder, Encoder, Framed};
 use split::{ReadHalf, WriteHalf};
