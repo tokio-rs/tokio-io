@@ -330,3 +330,25 @@ impl<T: AsyncRead> AsyncRead for std_io::BufReader<T> {
         self.get_ref().prepare_uninitialized_buffer(buf)
     }
 }
+
+impl<T: AsRef<[u8]>> AsyncRead for std_io::Cursor<T> {
+}
+
+impl<'a> AsyncWrite for std_io::Cursor<&'a mut [u8]> {
+    fn shutdown(&mut self) -> Poll<(), std_io::Error> {
+        Ok(().into())
+    }
+}
+
+impl AsyncWrite for std_io::Cursor<Vec<u8>> {
+    fn shutdown(&mut self) -> Poll<(), std_io::Error> {
+        Ok(().into())
+    }
+}
+
+impl AsyncWrite for std_io::Cursor<Box<[u8]>> {
+    fn shutdown(&mut self) -> Poll<(), std_io::Error> {
+        Ok(().into())
+    }
+}
+
