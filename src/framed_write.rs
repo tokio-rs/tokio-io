@@ -22,13 +22,19 @@ pub trait Encoder {
     /// The type of items consumed by the `Encoder`
     type Item;
 
+    /// The type of encoding errors.
+    ///
+    /// `FramedWrite` requires `Encoder`s errors to implement `From<io::Error>`
+    /// in the interest letting it return `Error`s directly.
+    type Error;
+
     /// Encodes a frame into the buffer provided.
     ///
     /// This method will encode `msg` into the byte buffer provided by `buf`.
     /// The `buf` provided is an internal buffer of the `Framed` instance and
     /// will be written out when possible.
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut)
-              -> io::Result<()>;
+              -> Result<(), Self::Error>;
 }
 
 /// A `Sink` of frames encoded to an `AsyncWrite`.
@@ -100,11 +106,12 @@ impl<T, E> FramedWrite<T, E> {
 impl<T, E> Sink for FramedWrite<T, E>
     where T: AsyncWrite,
           E: Encoder,
+          E::Error: From<io::Error>,
 {
     type SinkItem = E::Item;
-    type SinkError = io::Error;
+    type SinkError = E::Error;
 
-    fn start_send(&mut self, item: E::Item) -> StartSend<E::Item, io::Error> {
+    fn start_send(&mut self, item: E::Item) -> StartSend<E::Item, E::Error> {
         self.inner.start_send(item)
     }
 
@@ -112,8 +119,8 @@ impl<T, E> Sink for FramedWrite<T, E>
         self.inner.poll_complete()
     }
 
-    fn close(&mut self) -> Poll<(), io::Error> {
-        self.inner.close()
+    fn close(&mut self) -> Poll<(), Self::SinkError> {
+        self.inner.close().map_err(Into::into)
     }
 }
 
@@ -158,11 +165,12 @@ impl<T> FramedWrite2<T> {
 
 impl<T> Sink for FramedWrite2<T>
     where T: AsyncWrite + Encoder,
+          T::Error: From<io::Error>
 {
     type SinkItem = T::Item;
-    type SinkError = io::Error;
+    type SinkError = T::Error;
 
-    fn start_send(&mut self, item: T::Item) -> StartSend<T::Item, io::Error> {
+    fn start_send(&mut self, item: T::Item) -> StartSend<T::Item, T::Error> {
         // If the buffer is already over 8KiB, then attempt to flush it. If after flushing it's
         // *still* over 8KiB, then apply backpressure (reject the send).
         if self.buffer.len() >= BACKPRESSURE_BOUNDARY {
@@ -203,9 +211,9 @@ impl<T> Sink for FramedWrite2<T>
         return Ok(Async::Ready(()));
     }
 
-    fn close(&mut self) -> Poll<(), io::Error> {
+    fn close(&mut self) -> Poll<(), Self::SinkError> {
         try_ready!(self.poll_complete());
-        self.inner.shutdown()
+        self.inner.shutdown().map_err(Into::into)
     }
 }
 

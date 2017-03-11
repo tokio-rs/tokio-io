@@ -42,9 +42,10 @@ impl<T, U> Stream for Framed<T, U>
 impl<T, U> Sink for Framed<T, U>
     where T: AsyncWrite,
           U: Encoder,
+          U::Error: From<io::Error>,
 {
     type SinkItem = U::Item;
-    type SinkError = io::Error;
+    type SinkError = U::Error;
 
     fn start_send(&mut self,
                   item: Self::SinkItem)
@@ -119,8 +120,9 @@ impl<T, U: Decoder> Decoder for Fuse<T, U> {
 
 impl<T, U: Encoder> Encoder for Fuse<T, U> {
     type Item = U::Item;
+    type Error = U::Error;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         self.1.encode(item, dst)
     }
 }
