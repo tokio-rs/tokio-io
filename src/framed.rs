@@ -32,7 +32,7 @@ impl<T, U> Stream for Framed<T, U>
           U: Decoder,
 {
     type Item = U::Item;
-    type Error = io::Error;
+    type Error = U::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.inner.poll()
@@ -106,12 +106,13 @@ impl<T: AsyncWrite, U> AsyncWrite for Fuse<T, U> {
 
 impl<T, U: Decoder> Decoder for Fuse<T, U> {
     type Item = U::Item;
+    type Error = U::Error;
 
-    fn decode(&mut self, buffer: &mut BytesMut) -> io::Result<Option<Self::Item>> {
+    fn decode(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.1.decode(buffer)
     }
 
-    fn decode_eof(&mut self, buffer: &mut BytesMut) -> io::Result<Option<Self::Item>> {
+    fn decode_eof(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.1.decode_eof(buffer)
     }
 }

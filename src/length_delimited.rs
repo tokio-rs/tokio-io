@@ -319,6 +319,7 @@ impl Decoder {
 
 impl codec::Decoder for Decoder {
     type Item = BytesMut;
+    type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<BytesMut>> {
         let n = match self.state {

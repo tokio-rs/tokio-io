@@ -211,12 +211,13 @@ impl<T> Sink for FramedWrite2<T>
 
 impl<T: Decoder> Decoder for FramedWrite2<T> {
     type Item = T::Item;
+    type Error = T::Error;
 
-    fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<T::Item>> {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<T::Item>, T::Error> {
         self.inner.decode(src)
     }
 
-    fn decode_eof(&mut self, src: &mut BytesMut) -> io::Result<Option<T::Item>> {
+    fn decode_eof(&mut self, src: &mut BytesMut) -> Result<Option<T::Item>, T::Error> {
         self.inner.decode_eof(src)
     }
 }
