@@ -20,6 +20,18 @@ pub trait Decoder {
     /// The type of decoded frames.
     type Item;
 
+    /// The type of unrecoverable frame decoding errors.
+    ///
+    /// If an individual message is ill-formed but can be ignored without
+    /// interfering with the processing of future messages, it may be more
+    /// useful to report the failure as an `Item`.
+    ///
+    /// `From<io::Error>` is required in the interest of making `Error` suitable
+    /// for returning directly from a `FramedRead`, and to enable the default
+    /// implementation of `decode_eof` to yield a fake `io::Error` when the
+    /// decoder fails to consume all available data.
+    type Error: From<io::Error>;
+
     /// Attempts to decode a frame from the provided buffer of bytes.
     ///
     /// This method is called by `FramedRead` whenever bytes are ready to be
@@ -45,7 +57,7 @@ pub trait Decoder {
     /// Finally, if the bytes in the buffer are malformed then an error is
     /// returned indicating why. This informs `Framed` that the stream is now
     /// corrupt and should be terminated.
-    fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<Self::Item>>;
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error>;
 
     /// A default method available to be called when there are no more bytes
     /// available to be read from the underlying I/O.
@@ -60,15 +72,15 @@ pub trait Decoder {
     /// called again until it returns `None`, indicating that there are no more
     /// frames to yield. This behavior enables returning finalization frames
     /// that may not be based on inbound data.
-    fn decode_eof(&mut self, buf: &mut BytesMut) -> io::Result<Option<Self::Item>> {
+    fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         match try!(self.decode(buf)) {
             Some(frame) => Ok(Some(frame)),
             None => {
                 if buf.is_empty() {
                     Ok(None)
                 } else {
-                    Err(io::Error::new(io::ErrorKind::Other,
-                                       "bytes remaining on stream"))
+                    Err(Self::Error::from(io::Error::new(io::ErrorKind::Other,
+                                                         "bytes remaining on stream")))
                 }
             }
         }
@@ -149,9 +161,9 @@ impl<T, D> Stream for FramedRead<T, D>
           D: Decoder,
 {
     type Item = D::Item;
-    type Error = io::Error;
+    type Error = D::Error;
 
-    fn poll(&mut self) -> Poll<Option<Self::Item>, io::Error> {
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.inner.poll()
     }
 }
@@ -218,7 +230,7 @@ impl<T> Stream for FramedRead2<T>
     where T: AsyncRead + Decoder,
 {
     type Item = T::Item;
-    type Error = io::Error;
+    type Error = T::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         loop {

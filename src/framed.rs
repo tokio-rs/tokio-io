@@ -32,7 +32,7 @@ impl<T, U> Stream for Framed<T, U>
           U: Decoder,
 {
     type Item = U::Item;
-    type Error = io::Error;
+    type Error = U::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         self.inner.poll()
@@ -42,9 +42,10 @@ impl<T, U> Stream for Framed<T, U>
 impl<T, U> Sink for Framed<T, U>
     where T: AsyncWrite,
           U: Encoder,
+          U::Error: From<io::Error>,
 {
     type SinkItem = U::Item;
-    type SinkError = io::Error;
+    type SinkError = U::Error;
 
     fn start_send(&mut self,
                   item: Self::SinkItem)
@@ -106,20 +107,22 @@ impl<T: AsyncWrite, U> AsyncWrite for Fuse<T, U> {
 
 impl<T, U: Decoder> Decoder for Fuse<T, U> {
     type Item = U::Item;
+    type Error = U::Error;
 
-    fn decode(&mut self, buffer: &mut BytesMut) -> io::Result<Option<Self::Item>> {
+    fn decode(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.1.decode(buffer)
     }
 
-    fn decode_eof(&mut self, buffer: &mut BytesMut) -> io::Result<Option<Self::Item>> {
+    fn decode_eof(&mut self, buffer: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.1.decode_eof(buffer)
     }
 }
 
 impl<T, U: Encoder> Encoder for Fuse<T, U> {
     type Item = U::Item;
+    type Error = U::Error;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         self.1.encode(item, dst)
     }
 }

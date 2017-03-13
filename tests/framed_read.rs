@@ -24,6 +24,7 @@ struct U32Decoder;
 
 impl Decoder for U32Decoder {
     type Item = u32;
+    type Error = io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
         if buf.len() < 4 {
@@ -140,6 +141,7 @@ fn huge_size() {
 
     impl Decoder for BigDecoder {
         type Item = u32;
+        type Error = io::Error;
 
         fn decode(&mut self, buf: &mut BytesMut) -> io::Result<Option<u32>> {
             if buf.len() < 32 * 1024 {
@@ -166,6 +168,7 @@ fn multi_frames_on_eof() {
 
     impl Decoder for MyDecoder {
         type Item = u32;
+        type Error = io::Error;
 
         fn decode(&mut self, _buf: &mut BytesMut) -> io::Result<Option<u32>> {
             unreachable!();
