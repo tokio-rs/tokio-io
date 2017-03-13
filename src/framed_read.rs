@@ -28,8 +28,11 @@ pub trait Decoder {
     ///
     /// `From<io::Error>` is required in the interest of making `Error` suitable
     /// for returning directly from a `FramedRead`, and to enable the default
-    /// implementation of `decode_eof` to yield a fake `io::Error` when the
-    /// decoder fails to consume all available data.
+    /// implementation of `decode_eof` to yield an `io::Error` when the decoder
+    /// fails to consume all available data.
+    ///
+    /// Note that implementors of this trait can simply indicate `type Error =
+    /// io::Error` to use I/O errors as this type.
     type Error: From<io::Error>;
 
     /// Attempts to decode a frame from the provided buffer of bytes.
@@ -79,8 +82,8 @@ pub trait Decoder {
                 if buf.is_empty() {
                     Ok(None)
                 } else {
-                    Err(Self::Error::from(io::Error::new(io::ErrorKind::Other,
-                                                         "bytes remaining on stream")))
+                    Err(io::Error::new(io::ErrorKind::Other,
+                                       "bytes remaining on stream").into())
                 }
             }
         }

@@ -26,7 +26,7 @@ pub trait Encoder {
     ///
     /// `FramedWrite` requires `Encoder`s errors to implement `From<io::Error>`
     /// in the interest letting it return `Error`s directly.
-    type Error;
+    type Error: From<io::Error>;
 
     /// Encodes a frame into the buffer provided.
     ///
@@ -106,7 +106,6 @@ impl<T, E> FramedWrite<T, E> {
 impl<T, E> Sink for FramedWrite<T, E>
     where T: AsyncWrite,
           E: Encoder,
-          E::Error: From<io::Error>,
 {
     type SinkItem = E::Item;
     type SinkError = E::Error;
@@ -120,7 +119,7 @@ impl<T, E> Sink for FramedWrite<T, E>
     }
 
     fn close(&mut self) -> Poll<(), Self::SinkError> {
-        self.inner.close().map_err(Into::into)
+        Ok(try!(self.inner.close()))
     }
 }
 
@@ -165,7 +164,6 @@ impl<T> FramedWrite2<T> {
 
 impl<T> Sink for FramedWrite2<T>
     where T: AsyncWrite + Encoder,
-          T::Error: From<io::Error>
 {
     type SinkItem = T::Item;
     type SinkError = T::Error;
@@ -213,7 +211,7 @@ impl<T> Sink for FramedWrite2<T>
 
     fn close(&mut self) -> Poll<(), Self::SinkError> {
         try_ready!(self.poll_complete());
-        self.inner.shutdown().map_err(Into::into)
+        Ok(try!(self.inner.shutdown()))
     }
 }
 
