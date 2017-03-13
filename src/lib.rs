@@ -233,6 +233,10 @@ pub trait AsyncWrite: std_io::Write {
     /// through to the wrapped type, and base types will typically implement
     /// shutdown logic here or just return `Ok(().into())`.
     ///
+    /// Invocation of a `shutdown` implies invocation of `flush`. Once this
+    /// method returns `Ready` it implies that a flush successfully happened
+    /// before the shutdown happened.
+    ///
     /// # Return value
     ///
     /// This function returns a `Poll<(), io::Error>` classified as such:
