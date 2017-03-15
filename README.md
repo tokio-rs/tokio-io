@@ -2,14 +2,30 @@
 
 Core I/O abstractions for the Tokio stack.
 
-[![Build Status](https://travis-ci.org/alexcrichton/tokio-io.svg?branch=master)](https://travis-ci.org/alexcrichton/tokio-io)
+[![Build Status](https://travis-ci.org/tokio-rs/tokio-io.svg?branch=master)](https://travis-ci.org/tokio-rs/tokio-io)
 
-[Documentation](http://alexcrichton.com/tokio-io)
+[Documentation](https://docs.rs/tokio-io)
 
-# Usage
+## Usage
 
-Note that this is a WIP project currently. The intention is to eventually
-replace much of the functionality of the `tokio_core::io` module.
+First, add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+tokio-io = "0.1"
+```
+
+Next, add this to your crate:
+
+```rust
+extern crate tokio_io;
+```
+
+You can find extensive documentation and examples about how to use this crate
+online at [https://tokio.rs](https://tokio.rs). The [API
+documentation](https://docs.rs/tokio-io) is also a great place to get started
+for the nitty-gritty.
+
 
 # License
 
