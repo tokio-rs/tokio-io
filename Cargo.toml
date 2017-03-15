@@ -12,7 +12,7 @@ Core I/O primitives for asynchronous I/O in Rust.
 categories = ["asynchronous"]
 
 [dependencies]
-bytes = { git = "https://github.com/carllerche/bytes" }
+bytes = "0.4"
 futures = { version = "0.1.11", default-features = false, features = ["use_std"] }
 log = "0.3"
 
