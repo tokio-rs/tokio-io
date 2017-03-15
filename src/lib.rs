@@ -111,6 +111,9 @@ pub trait AsyncRead: std_io::Read {
     /// multiple sub implementations to efficiently implement
     /// `prepare_uninitialized_buffer`.
     ///
+    /// This function isn't actually `unsafe` to call but `unsafe` to implement. The
+    /// implementor must ensure that the whole `buf` has been zeroed.
+    ///
     /// This function is called from [`read_buf`].
     ///
     /// [`io::Read`]: https://doc.rust-lang.org/std/io/trait.Read.html
