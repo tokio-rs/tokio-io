@@ -112,7 +112,7 @@ pub trait AsyncRead: std_io::Read {
     /// `prepare_uninitialized_buffer`.
     ///
     /// This function isn't actually `unsafe` to call but `unsafe` to implement. The
-    /// implementor must ensure that the whole `buf` has been zeroed.
+    /// implementor must ensure that either the whole `buf` has been zeroed or `read_buf()`.
     ///
     /// This function is called from [`read_buf`].
     ///
