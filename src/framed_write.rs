@@ -160,6 +160,14 @@ impl<T> FramedWrite2<T> {
     pub fn get_ref(&self) -> &T {
         &self.inner
     }
+
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 impl<T> Sink for FramedWrite2<T>
