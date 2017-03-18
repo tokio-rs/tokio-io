@@ -27,6 +27,37 @@ pub fn framed<T, U>(inner: T, codec: U) -> Framed<T, U>
     }
 }
 
+impl<T, U> Framed<T, U> {
+    /// Returns a reference to the underlying I/O stream wrapped by
+    /// `Frame`.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn get_ref(&self) -> &T {
+        &self.inner.get_ref().get_ref().0
+    }
+
+    /// Returns a mutable reference to the underlying I/O stream wrapped by
+    /// `Frame`.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.inner.get_mut().get_mut().0
+    }
+
+    /// Consumes the `Frame`, returning its underlying I/O stream.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn into_inner(self) -> T {
+        self.inner.into_inner().into_inner().0
+    }
+}
+
 impl<T, U> Stream for Framed<T, U>
     where T: AsyncRead,
           U: Decoder,
