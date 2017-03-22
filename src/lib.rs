@@ -111,9 +111,10 @@ pub trait AsyncRead: std_io::Read {
     /// multiple sub implementations to efficiently implement
     /// `prepare_uninitialized_buffer`.
     ///
-    /// This function isn't actually `unsafe` to call but `unsafe` to implement. The
-    /// implementor must ensure that either the whole `buf` has been zeroed or `read_buf()`
-    /// overwrites the buffer without reading it and returns correct value.
+    /// This function isn't actually `unsafe` to call but `unsafe` to implement.
+    /// The implementor must ensure that either the whole `buf` has been zeroed
+    /// or `read_buf()` overwrites the buffer without reading it and returns
+    /// correct value.
     ///
     /// This function is called from [`read_buf`].
     ///
@@ -133,7 +134,9 @@ pub trait AsyncRead: std_io::Read {
     /// The `buf` provided will have bytes read into it and the internal cursor
     /// will be advanced if any bytes were read. Note that this method typically
     /// will not reallocate the buffer provided.
-    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error> {
+    fn read_buf<B: BufMut>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error>
+        where Self: Sized,
+    {
         if !buf.has_remaining_mut() {
             return Ok(Async::Ready(0));
         }
@@ -279,7 +282,9 @@ pub trait AsyncWrite: std_io::Write {
     ///
     /// Note that this method will advance the `buf` provided automatically by
     /// the number of bytes written.
-    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error> {
+    fn write_buf<B: Buf>(&mut self, buf: &mut B) -> Poll<usize, std_io::Error>
+        where Self: Sized,
+    {
         if !buf.has_remaining() {
             return Ok(Async::Ready(0));
         }
@@ -360,3 +365,8 @@ impl AsyncWrite for std_io::Cursor<Box<[u8]>> {
     }
 }
 
+fn _assert_objects() {
+    fn _assert<T>() {}
+    _assert::<Box<AsyncRead>>();
+    _assert::<Box<AsyncWrite>>();
+}
