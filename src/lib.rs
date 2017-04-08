@@ -234,15 +234,25 @@ pub trait AsyncWrite: std_io::Write {
     /// This method is intended to be used for asynchronous shutdown of I/O
     /// connections. For example this is suitable for implementing shutdown of a
     /// TLS connection or calling `TcpStream::shutdown` on a proxied connection.
+    /// Protocols sometimes need to flush out final pieces of data or otherwise
+    /// perform a graceful shutdown handshake, reading/writing more data as
+    /// appropriate. This method is the hook for such protocols to implement the
+    /// graceful shutdown logic.
     ///
     /// This `shutdown` method is required by implementors of the
     /// `AsyncWrite` trait. Wrappers typically just want to proxy this call
     /// through to the wrapped type, and base types will typically implement
-    /// shutdown logic here or just return `Ok(().into())`.
+    /// shutdown logic here or just return `Ok(().into())`. Note that if you're
+    /// wrapping an underlying `AsyncWrite` a call to `shutdown` implies that
+    /// transitively the entire stream has been shut down. After your wrapper's
+    /// shutdown logic has been executed you should shut down the underlying
+    /// stream.
     ///
-    /// Invocation of a `shutdown` implies invocation of `flush`. Once this
+    /// Invocation of a `shutdown` implies an invocation of `flush`. Once this
     /// method returns `Ready` it implies that a flush successfully happened
-    /// before the shutdown happened.
+    /// before the shutdown happened. That is, callers don't need to call
+    /// `flush` before calling `shutdown`. They can rely that by calling
+    /// `shutdown` any pending buffered data will be written out.
     ///
     /// # Return value
     ///
