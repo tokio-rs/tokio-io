@@ -4,7 +4,7 @@
 //! addition to a description of the [low level details].
 //!
 //! [found online]: https://tokio.rs/docs/getting-started/core/
-//! [low level details]: https://tokio.rs/docs/going-deeper/core-low-level/
+//! [low level details]: https://tokio.rs/docs/going-deeper-tokio/core-low-level/
 
 #![deny(missing_docs, missing_debug_implementations)]
 #![doc(html_root_url = "https://docs.rs/tokio-io/0.1")]
