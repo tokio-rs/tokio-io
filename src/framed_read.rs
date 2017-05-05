@@ -231,6 +231,15 @@ impl<T> FramedRead2<T> {
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }
+
+    pub fn replace_inner<NewT, F: FnOnce(T) -> NewT>(self, newt: F) -> FramedRead2<NewT> {
+        FramedRead2 {
+            inner: newt(self.inner),
+            eof: self.eof,
+            is_readable: self.is_readable,
+            buffer: self.buffer
+        }
+    }
 }
 
 impl<T> Stream for FramedRead2<T>
