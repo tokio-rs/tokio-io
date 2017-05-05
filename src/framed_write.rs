@@ -168,6 +168,10 @@ impl<T> FramedWrite2<T> {
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.inner
     }
+
+    pub fn replace_inner<TNew, F: FnOnce(T) -> TNew>(self, new_inner: F) -> FramedWrite2<TNew> {
+        FramedWrite2 { inner: new_inner(self.inner), buffer: self.buffer }
+    }
 }
 
 impl<T> Sink for FramedWrite2<T>

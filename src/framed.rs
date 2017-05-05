@@ -56,6 +56,13 @@ impl<T, U> Framed<T, U> {
     pub fn into_inner(self) -> T {
         self.inner.into_inner().into_inner().0
     }
+
+    /// Consumes the 'Frame', returning a new Frame-stream with the same underlying I/O stream and a different codec.
+    /// 
+    /// Bytes already read into the buffer will be transferred to the new codec
+    pub fn change_codec<UNew>(self, codec: UNew) -> Framed<T, UNew> {
+        Framed { inner: self.inner.replace_inner(|fr| fr.replace_inner(|fuse| Fuse(fuse.0, codec))) }
+    }
 }
 
 impl<T, U> Stream for Framed<T, U>
