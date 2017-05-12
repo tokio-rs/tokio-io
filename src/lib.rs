@@ -380,3 +380,85 @@ fn _assert_objects() {
     _assert::<Box<AsyncRead>>();
     _assert::<Box<AsyncWrite>>();
 }
+
+/// Implementation of `AsyncRead` over any `Read`.
+///
+/// Resulting implementation does not properly follow `AsyncRead`
+/// protocol. It may block, e. g. whole event loop may stall.
+///
+/// This struct can be useful when you need to execute simple asynchronous code
+/// synchronously, e. g. in tests.
+///
+/// # Examples
+///
+/// ```
+/// # extern crate tokio_io;
+/// # extern crate futures;
+/// # use std::io;
+/// # use std::io::Read;
+/// # use futures::future::Future;
+/// # use tokio_io::*;
+///
+/// // This functions calls async implementation of `read_to_end` synchronously
+/// fn read_to_end_sync(read: &mut Read, buf: Vec<u8>) -> io::Result<Vec<u8>> {
+///     Ok(tokio_io::io::read_to_end(SyncRead(read), buf).wait()?.1)
+/// }
+///
+/// # fn main() {}
+/// ```
+#[derive(Debug)]
+pub struct SyncRead<'r, R : std_io::Read + ?Sized + 'r>(pub &'r mut R);
+
+/// Implementation of `AsyncWrite` over any `Write`.
+///
+/// Resulting implementation does not properly follow `AsyncWrite`
+/// protocol. It may block, e. g. whole event loop may stall.
+///
+/// This struct can be useful when you need to execute simple asynchronous code
+/// synchronously, e. g. in tests.
+///
+/// # Examples
+///
+/// ```
+/// # extern crate tokio_io;
+/// # extern crate futures;
+/// # use std::io;
+/// # use std::io::Write;
+/// # use futures::future::Future;
+/// # use tokio_io::*;
+///
+/// // This functions calls async implementation of `write_all` synchronously
+/// fn write_all_sync(write: &mut Write, data: &[u8]) -> io::Result<()> {
+///     tokio_io::io::write_all(SyncWrite(write), data).wait()?;
+///     Ok(())
+/// }
+///
+/// # fn main() {}
+/// ```
+#[derive(Debug)]
+pub struct SyncWrite<'w, W : std_io::Write + ?Sized + 'w>(pub &'w mut W);
+
+impl<'r, R : std_io::Read + ?Sized + 'r> std_io::Read for SyncRead<'r, R> {
+    fn read(&mut self, buf: &mut [u8]) -> std_io::Result<usize> {
+        self.0.read(buf)
+    }
+}
+
+impl<'w, W : std_io::Write + ?Sized + 'w> std_io::Write for SyncWrite<'w, W> {
+    fn write(&mut self, buf: &[u8]) -> std_io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    fn flush(&mut self) -> std_io::Result<()> {
+        self.0.flush()
+    }
+}
+
+impl<'r, R : std_io::Read + ?Sized + 'r> AsyncRead for SyncRead<'r, R> {
+}
+
+impl<'w, W : std_io::Write + ?Sized + 'w> AsyncWrite for SyncWrite<'w, W> {
+    fn shutdown(&mut self) -> Poll<(), std_io::Error> {
+        self.0.flush().map(Async::Ready)
+    }
+}
