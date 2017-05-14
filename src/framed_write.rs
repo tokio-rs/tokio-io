@@ -156,6 +156,13 @@ pub fn framed_write2<T>(inner: T) -> FramedWrite2<T> {
     }
 }
 
+pub fn framed_write2_with_buffer<T>(inner: T, buf: BytesMut) -> FramedWrite2<T> {
+    FramedWrite2 {
+        inner: inner,
+        buffer: buf,
+    }
+}
+
 impl<T> FramedWrite2<T> {
     pub fn get_ref(&self) -> &T {
         &self.inner
@@ -163,6 +170,10 @@ impl<T> FramedWrite2<T> {
 
     pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    pub fn into_parts(self) -> (T, BytesMut) {
+        (self.inner, self.buffer)
     }
 
     pub fn get_mut(&mut self) -> &mut T {

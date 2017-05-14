@@ -219,6 +219,15 @@ pub fn framed_read2<T>(inner: T) -> FramedRead2<T> {
     }
 }
 
+pub fn framed_read2_with_buffer<T>(inner: T, buf: BytesMut) -> FramedRead2<T> {
+    FramedRead2 {
+        inner: inner,
+        eof: false,
+        is_readable: false,
+        buffer: buf,
+    }
+}
+
 impl<T> FramedRead2<T> {
     pub fn get_ref(&self) -> &T {
         &self.inner
@@ -226,6 +235,10 @@ impl<T> FramedRead2<T> {
 
     pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    pub fn into_parts(self) -> (T, BytesMut) {
+        (self.inner, self.buffer)
     }
 
     pub fn get_mut(&mut self) -> &mut T {

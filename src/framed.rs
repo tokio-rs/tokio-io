@@ -2,8 +2,8 @@ use std::io::{self, Read, Write};
 use std::fmt;
 
 use {AsyncRead, AsyncWrite};
-use framed_read::{framed_read2, FramedRead2, Decoder};
-use framed_write::{framed_write2, FramedWrite2, Encoder};
+use framed_read::{framed_read2, framed_read2_with_buffer, FramedRead2, Decoder};
+use framed_write::{framed_write2, framed_write2_with_buffer, FramedWrite2, Encoder};
 
 use futures::{Stream, Sink, StartSend, Poll};
 use bytes::{BytesMut};
@@ -28,6 +28,33 @@ pub fn framed<T, U>(inner: T, codec: U) -> Framed<T, U>
 }
 
 impl<T, U> Framed<T, U> {
+    /// Provides a `Stream` and `Sink` interface for reading and writing to this
+    /// `Io` object, using `Decode` and `Encode` to read and write the raw data.
+    ///
+    /// Raw I/O objects work with byte sequences, but higher-level code usually
+    /// wants to batch these into meaningful chunks, called "frames". This
+    /// method layers framing on top of an I/O object, by using the `Codec`
+    /// traits to handle encoding and decoding of messages frames. Note that
+    /// the incoming and outgoing frame types may be distinct.
+    ///
+    /// This function returns a *single* object that is both `Stream` and
+    /// `Sink`; grouping this into a single object is often useful for layering
+    /// things like gzip or TLS, which require both read and write access to the
+    /// underlying object.
+    ///
+    /// This objects takes a stream and a readbuffer and a writebuffer. These field
+    /// can be obtained from an existing `Framed` with the `into_parts` method.
+    ///
+    /// If you want to work more directly with the streams and sink, consider
+    /// calling `split` on the `Framed` returned by this method, which will
+    /// break them into separate objects, allowing them to interact more easily.
+    pub fn from_parts(parts: FramedParts<T>, codec: U) -> Framed<T, U>
+    {
+        Framed {
+            inner: framed_read2_with_buffer(framed_write2_with_buffer(Fuse(parts.inner, codec), parts.writebuf), parts.readbuf),
+        }
+    }
+
     /// Returns a reference to the underlying I/O stream wrapped by
     /// `Frame`.
     ///
@@ -55,6 +82,18 @@ impl<T, U> Framed<T, U> {
     /// being worked with.
     pub fn into_inner(self) -> T {
         self.inner.into_inner().into_inner().0
+    }
+
+    /// Consumes the `Frame`, returning its underlying I/O stream and the buffer
+    /// with unprocessed data.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn into_parts(self) -> FramedParts<T> {
+        let (inner, readbuf) = self.inner.into_parts();
+	    let (inner, writebuf) = inner.into_parts();
+        FramedParts { inner: inner.0, readbuf: readbuf, writebuf: writebuf }
     }
 }
 
@@ -156,4 +195,12 @@ impl<T, U: Encoder> Encoder for Fuse<T, U> {
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         self.1.encode(item, dst)
     }
+}
+
+#[derive(Debug)]
+pub struct FramedParts<T>
+{
+    pub inner: T,
+    pub readbuf: BytesMut,
+    pub writebuf: BytesMut
 }
