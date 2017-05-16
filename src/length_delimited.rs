@@ -419,6 +419,19 @@ impl<T: AsyncWrite, B: IntoBuf> FramedWrite<T, B> {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "frame too big"));
         }
 
+        // Adjust `n` with bounds checking
+        let n = if self.builder.length_adjustment < 0 {
+            n.checked_add(-self.builder.length_adjustment as usize)
+        } else {
+            n.checked_sub(self.builder.length_adjustment as usize)
+        };
+
+        // Error handling
+        let n = match n {
+            Some(n) => n,
+            None => return Err(io::Error::new(io::ErrorKind::InvalidInput, "provided length would overflow after adjustment")),
+        };
+
         if self.builder.length_field_is_big_endian {
             head.put_uint::<BigEndian>(n as u64, self.builder.length_field_len);
         } else {
@@ -664,8 +677,6 @@ impl Builder {
 
     /// Delta between the payload length specified in the header and the real
     /// payload length
-    ///
-    /// This configuration option only applies to decoding.
     ///
     /// # Examples
     ///

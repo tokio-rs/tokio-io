@@ -19,6 +19,7 @@ macro_rules! mock {
     }};
 }
 
+
 #[test]
 fn read_empty_io_yields_nothing() {
     let mut io = FramedRead::new(mock!());
@@ -253,6 +254,20 @@ fn read_single_multi_frame_one_packet_length_includes_head() {
 }
 
 #[test]
+fn write_single_frame_length_adjusted() {
+    let mut io = Builder::new()
+        .length_adjustment(-2)
+        .new_write(mock! {
+            Ok(b"\x00\x00\x00\x0b"[..].into()),
+            Ok(b"abcdefghi"[..].into()),
+            Ok(Flush),
+        });
+    assert!(io.start_send("abcdefghi").unwrap().is_ready());
+    assert!(io.poll_complete().unwrap().is_ready());
+    assert!(io.get_ref().calls.is_empty());
+}
+
+#[test]
 fn write_nothing_yields_nothing() {
     let mut io: FramedWrite<_, &'static [u8]> = FramedWrite::new(mock!());
     assert!(io.poll_complete().unwrap().is_ready());
@@ -346,6 +361,7 @@ fn write_single_frame_little_endian() {
     assert!(io.poll_complete().unwrap().is_ready());
     assert!(io.get_ref().calls.is_empty());
 }
+
 
 #[test]
 fn write_single_frame_with_short_length_field() {
