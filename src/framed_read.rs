@@ -219,11 +219,15 @@ pub fn framed_read2<T>(inner: T) -> FramedRead2<T> {
     }
 }
 
-pub fn framed_read2_with_buffer<T>(inner: T, buf: BytesMut) -> FramedRead2<T> {
+pub fn framed_read2_with_buffer<T>(inner: T, mut buf: BytesMut) -> FramedRead2<T> {
+    if buf.capacity() < INITIAL_CAPACITY {
+        let bytes_to_reserve = INITIAL_CAPACITY - buf.capacity();
+        buf.reserve(bytes_to_reserve);
+    }
     FramedRead2 {
         inner: inner,
         eof: false,
-        is_readable: false,
+        is_readable: buf.len() > 0,
         buffer: buf,
     }
 }

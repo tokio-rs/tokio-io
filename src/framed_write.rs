@@ -156,7 +156,11 @@ pub fn framed_write2<T>(inner: T) -> FramedWrite2<T> {
     }
 }
 
-pub fn framed_write2_with_buffer<T>(inner: T, buf: BytesMut) -> FramedWrite2<T> {
+pub fn framed_write2_with_buffer<T>(inner: T, mut buf: BytesMut) -> FramedWrite2<T> {
+    if buf.capacity() < INITIAL_CAPACITY {
+        let bytes_to_reserve = INITIAL_CAPACITY - buf.capacity();
+        buf.reserve(bytes_to_reserve);
+    }
     FramedWrite2 {
         inner: inner,
         buffer: buf,
