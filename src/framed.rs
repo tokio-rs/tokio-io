@@ -197,10 +197,16 @@ impl<T, U: Encoder> Encoder for Fuse<T, U> {
     }
 }
 
+/// `FramedParts` contains an export of the data of a Framed transport.
+/// It can be used to construct a new `Framed` with a different codec.
+/// It contains all current buffers and the inner transport.
 #[derive(Debug)]
 pub struct FramedParts<T>
 {
+    /// The inner transport used to read bytes to and write bytes to
     pub inner: T,
+    /// The buffer with read but unprocessed data.
     pub readbuf: BytesMut,
+    /// A buffer with unprocessed data which are not written yet.
     pub writebuf: BytesMut
 }

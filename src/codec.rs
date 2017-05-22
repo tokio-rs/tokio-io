@@ -10,7 +10,7 @@
 //! [`Stream`]: #
 //! [transports]: #
 
-pub use framed::Framed;
+pub use framed::{Framed, FramedParts};
 pub use framed_read::{FramedRead, Decoder};
 pub use framed_write::{FramedWrite, Encoder};
 
