@@ -75,8 +75,9 @@ use split::{ReadHalf, WriteHalf};
 ///
 /// This trait inherits from `io::Read` and indicates as a marker that an I/O
 /// object is **nonblocking**, meaning that it will return an error instead of
-/// blocking when bytes are read. Specifically this means that the `read`
-/// function for traits that implement this type can have a few return values:
+/// blocking when bytes are unavailable, but the stream hasn't reached EOF.
+/// Specifically this means that the `read` function for traits that implement
+/// this type can have a few return values:
 ///
 /// * `Ok(n)` means that `n` bytes of data was immediately read and placed into
 ///   the output buffer, where `n` == 0 implies that EOF has been reached.
@@ -212,8 +213,9 @@ impl<'a> AsyncRead for &'a [u8] {
 ///
 /// This trait inherits from `io::Write` and indicates that an I/O object is
 /// **nonblocking**, meaning that it will return an error instead of blocking
-/// when bytes are written. Specifically this means that the `write` function
-/// for traits that implement this type can have a few return values:
+/// when bytes cannot currently be written, but hasn't closed. Specifically
+/// this means that the `write` function for traits that implement this type
+/// can have a few return values:
 ///
 /// * `Ok(n)` means that `n` bytes of data was immediately written .
 /// * `Err(e) if e.kind() == ErrorKind::WouldBlock` means that no data was
