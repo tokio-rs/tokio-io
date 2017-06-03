@@ -42,16 +42,17 @@ impl<T, U> Framed<T, U> {
     /// things like gzip or TLS, which require both read and write access to the
     /// underlying object.
     ///
-    /// This objects takes a stream and a readbuffer and a writebuffer. These field
-    /// can be obtained from an existing `Framed` with the `into_parts` method.
+    /// This objects takes a stream, a codec, a readbuffer and a writebuffer.
+    /// These field can be obtained from an existing `Framed` with the
+    /// `into_parts` method.
     ///
     /// If you want to work more directly with the streams and sink, consider
     /// calling `split` on the `Framed` returned by this method, which will
     /// break them into separate objects, allowing them to interact more easily.
-    pub fn from_parts(parts: FramedParts<T>, codec: U) -> Framed<T, U>
+    pub fn from_parts(parts: FramedParts<T, U>) -> Framed<T, U>
     {
         Framed {
-            inner: framed_read2_with_buffer(framed_write2_with_buffer(Fuse(parts.inner, codec), parts.writebuf), parts.readbuf),
+            inner: framed_read2_with_buffer(framed_write2_with_buffer(Fuse(parts.inner, parts.codec), parts.writebuf), parts.readbuf),
         }
     }
 
@@ -90,10 +91,10 @@ impl<T, U> Framed<T, U> {
     /// Note that care should be taken to not tamper with the underlying stream
     /// of data coming in as it may corrupt the stream of frames otherwise
     /// being worked with.
-    pub fn into_parts(self) -> FramedParts<T> {
+    pub fn into_parts(self) -> FramedParts<T, U> {
         let (inner, readbuf) = self.inner.into_parts();
 	    let (inner, writebuf) = inner.into_parts();
-        FramedParts { inner: inner.0, readbuf: readbuf, writebuf: writebuf }
+        FramedParts { inner: inner.0, codec: inner.1, readbuf: readbuf, writebuf: writebuf }
     }
 }
 
@@ -198,13 +199,16 @@ impl<T, U: Encoder> Encoder for Fuse<T, U> {
 }
 
 /// `FramedParts` contains an export of the data of a Framed transport.
-/// It can be used to construct a new `Framed` with a different codec.
-/// It contains all current buffers and the inner transport.
+/// It can be used to construct a new `Framed` with a different codec,
+/// or with a different inner transport.
+/// It contains all current buffers, codec and the inner transport.
 #[derive(Debug)]
-pub struct FramedParts<T>
+pub struct FramedParts<T, U>
 {
     /// The inner transport used to read bytes to and write bytes to
     pub inner: T,
+    /// The inner codec with its state.
+    pub codec: U,
     /// The buffer with read but unprocessed data.
     pub readbuf: BytesMut,
     /// A buffer with unprocessed data which are not written yet.
