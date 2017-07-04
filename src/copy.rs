@@ -73,8 +73,13 @@ impl<R, W> Future for Copy<R, W>
             while self.pos < self.cap {
                 let writer = self.writer.as_mut().unwrap();
                 let i = try_nb!(writer.write(&self.buf[self.pos..self.cap]));
-                self.pos += i;
-                self.amt += i as u64;
+                if i == 0 {
+                    return Err(io::Error::new(io::ErrorKind::WriteZero,
+                                              "write zero byte into writer"));
+                } else {
+                    self.pos += i;
+                    self.amt += i as u64;
+                }
             }
 
             // If we've written al the data and we've seen EOF, flush out the
