@@ -9,6 +9,7 @@ use futures::{Stream, Sink, Poll};
 use futures::Async::*;
 
 use std::io;
+use std::iter;
 use std::collections::VecDeque;
 
 macro_rules! mock {
@@ -46,6 +47,33 @@ fn read_single_frame_one_packet_little_endian() {
         });
 
     assert_eq!(io.poll().unwrap(), Ready(Some(b"abcdefghi"[..].into())));
+    assert_eq!(io.poll().unwrap(), Ready(None));
+}
+
+#[test]
+fn read_single_frame_one_packet_varint() {
+    let mut io = Builder::new()
+        .varint()
+        .new_read(mock! {
+            Ok(b"\x09abcdefghi"[..].into()),
+        });
+
+    assert_eq!(io.poll().unwrap(), Ready(Some(b"abcdefghi"[..].into())));
+    assert_eq!(io.poll().unwrap(), Ready(None));
+}
+
+#[test]
+fn read_single_frame_one_packet_multibyte_varint() {
+    let mut buf = [0x33u8; 302];
+    buf[0] = 0b10101100;
+    buf[1] = 0b00000010;
+    let mut io = Builder::new()
+        .varint()
+        .new_read(mock! {
+            Ok(buf[..].into()),
+        });
+
+    assert_eq!(io.poll().unwrap(), Ready(Some(buf[2..].into())));
     assert_eq!(io.poll().unwrap(), Ready(None));
 }
 
@@ -358,6 +386,37 @@ fn write_single_frame_little_endian() {
         });
 
     assert!(io.start_send("abcdefghi").unwrap().is_ready());
+    assert!(io.poll_complete().unwrap().is_ready());
+    assert!(io.get_ref().calls.is_empty());
+}
+
+#[test]
+fn write_single_frame_varint() {
+    let mut io = Builder::new()
+        .varint()
+        .new_write(mock! {
+            Ok(b"\x09"[..].into()),
+            Ok(b"abcdefghi"[..].into()),
+            Ok(Flush),
+        });
+
+    assert!(io.start_send("abcdefghi").unwrap().is_ready());
+    assert!(io.poll_complete().unwrap().is_ready());
+    assert!(io.get_ref().calls.is_empty());
+}
+
+#[test]
+fn write_single_frame_multibyte_varint() {
+    let mut io = Builder::new()
+        .varint()
+        .new_write(mock! {
+            Ok([0b10101100, 0b00000010][..].into()),
+            Ok([0x33u8; 300][..].into()),
+            Ok(Flush),
+        });
+
+    let data = iter::repeat('3').take(300).collect::<String>();
+    assert!(io.start_send(data).unwrap().is_ready());
     assert!(io.poll_complete().unwrap().is_ready());
     assert!(io.get_ref().calls.is_empty());
 }
