@@ -15,3 +15,4 @@ categories = ["asynchronous"]
 bytes = "0.4"
 futures = "0.1.11"
 log = "0.3"
+integer-encoding = "1.0"
