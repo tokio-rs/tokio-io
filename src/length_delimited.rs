@@ -172,6 +172,24 @@ impl<T: AsyncRead> FramedRead<T> {
 }
 
 impl<T> FramedRead<T> {
+    /// Returns the current max frame setting
+    ///
+    /// This is the largest size this codec will accept from the wire. Larger
+    /// frames will be rejected.
+    pub fn max_frame_length(&self) -> usize {
+        self.inner.decoder().builder.max_frame_len
+    }
+
+    /// Updates the max frame setting.
+    ///
+    /// The change takes effect the next time a frame is decoded. In other
+    /// words, if a frame is currently in process of being decoded with a frame
+    /// size greater than `val` but less than the max frame length in effect
+    /// before calling this function, then the frame will be allowed.
+    pub fn set_max_frame_length(&mut self, val: usize) {
+        self.inner.decoder_mut().builder.max_frame_length(val);
+    }
+
     /// Returns a reference to the underlying I/O stream wrapped by `FramedRead`.
     ///
     /// Note that care should be taken to not tamper with the underlying stream
