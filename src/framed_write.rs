@@ -8,14 +8,6 @@ use framed::Fuse;
 use futures::{Async, AsyncSink, Poll, Stream, Sink, StartSend};
 use bytes::BytesMut;
 
-macro_rules! mock {
-    ($($x:expr,)*) => {{
-        let mut v = VecDeque::new();
-        v.extend(vec![$($x),*]);
-        Mock { calls: v }
-    }};
-}
-
 /// Trait of helper objects to write out messages as bytes, for use with
 /// `FramedWrite`.
 pub trait Encoder {
