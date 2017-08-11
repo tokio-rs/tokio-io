@@ -187,6 +187,35 @@ fn read_max_frame_len() {
 }
 
 #[test]
+fn update_max_frame_len_at_rest() {
+    let mut io = Builder::new()
+        .new_read(mock! {
+            Ok(b"\x00\x00\x00\x09abcdefghi"[..].into()),
+            Ok(b"\x00\x00\x00\x09abcdefghi"[..].into()),
+        });
+
+    assert_eq!(io.poll().unwrap(), Ready(Some(b"abcdefghi"[..].into())));
+    io.set_max_frame_length(5);
+    assert_eq!(io.poll().unwrap_err().kind(), io::ErrorKind::InvalidData);
+}
+
+#[test]
+fn update_max_frame_len_in_flight() {
+    let mut io = Builder::new()
+        .new_read(mock! {
+            Ok(b"\x00\x00\x00\x09abcd"[..].into()),
+            Err(would_block()),
+            Ok(b"efghi"[..].into()),
+            Ok(b"\x00\x00\x00\x09abcdefghi"[..].into()),
+        });
+
+    assert_eq!(io.poll().unwrap(), NotReady);
+    io.set_max_frame_length(5);
+    assert_eq!(io.poll().unwrap(), Ready(Some(b"abcdefghi"[..].into())));
+    assert_eq!(io.poll().unwrap_err().kind(), io::ErrorKind::InvalidData);
+}
+
+#[test]
 fn read_one_byte_length_field() {
     let mut io = Builder::new()
         .length_field_length(1)
