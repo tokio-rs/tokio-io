@@ -22,8 +22,8 @@ pub trait Encoder {
 
     /// Encodes a frame into the buffer provided.
     ///
-    /// This method will encode `msg` into the byte buffer provided by `buf`.
-    /// The `buf` provided is an internal buffer of the `Framed` instance and
+    /// This method will encode `item` into the byte buffer provided by `dst`.
+    /// The `dst` provided is an internal buffer of the `Framed` instance and
     /// will be written out when possible.
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut)
               -> Result<(), Self::Error>;
