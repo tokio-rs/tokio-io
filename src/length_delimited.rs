@@ -6,6 +6,7 @@ use bytes::buf::Chain;
 use futures::{Async, AsyncSink, Stream, Sink, StartSend, Poll};
 
 use std::{cmp, fmt};
+use std::error::Error as StdError;
 use std::io::{self, Cursor};
 
 /// Configure length delimited `FramedRead`, `FramedWrite`, and `Framed` values.
@@ -53,6 +54,11 @@ pub struct Framed<T, B: IntoBuf = BytesMut> {
 #[derive(Debug)]
 pub struct FramedRead<T> {
     inner: codec::FramedRead<T, Decoder>,
+}
+
+/// An error when the number of bytes read is more than max frame length.
+pub struct FrameTooBig {
+    _priv: (),
 }
 
 #[derive(Debug)]
@@ -291,7 +297,9 @@ impl Decoder {
             };
 
             if n > self.builder.max_frame_len as u64 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "frame size too big"));
+                return Err(io::Error::new(io::ErrorKind::InvalidData, FrameTooBig {
+                    _priv: (),
+                }));
             }
 
             // The check above ensures there is no overflow
@@ -434,7 +442,9 @@ impl<T: AsyncWrite, B: IntoBuf> FramedWrite<T, B> {
         let n = buf.remaining();
 
         if n > self.builder.max_frame_len {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "frame too big"));
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, FrameTooBig {
+                _priv: (),
+            }));
         }
 
         // Adjust `n` with bounds checking
@@ -631,6 +641,9 @@ impl Builder {
     /// encoding, the length of the submitted payload is checked against this
     /// setting.
     ///
+    /// When frames exceed the max length, an `io::Error` with the custom value
+    /// of the `FrameTooBig` type will be returned.
+    ///
     /// # Examples
     ///
     /// ```
@@ -826,5 +839,27 @@ impl Builder {
 
     fn get_num_skip(&self) -> usize {
         self.num_skip.unwrap_or(self.length_field_offset + self.length_field_len)
+    }
+}
+
+
+// ===== impl FrameTooBig =====
+
+impl fmt::Debug for FrameTooBig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FrameTooBig")
+            .finish()
+    }
+}
+
+impl fmt::Display for FrameTooBig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.description())
+    }
+}
+
+impl StdError for FrameTooBig {
+    fn description(&self) -> &str {
+        "frame size too big"
     }
 }
