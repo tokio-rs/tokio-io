@@ -42,7 +42,7 @@ pub mod length_delimited {
     //! ```
     //!
     //! The returned transport implements `Sink + Stream` for `BytesMut`. It
-    //! encodes the frame with a big-endian `u32` header denotating the frame
+    //! encodes the frame with a big-endian `u32` header denoting the frame
     //! payload length:
     //!
     //! ```text
@@ -85,7 +85,7 @@ pub mod length_delimited {
     //!
     //! [`FramedRead`] adapts an [`AsyncRead`] into a `Stream` of [`BytesMut`],
     //! such that each yielded [`BytesMut`] value contains the contents of an
-    //! entire frame. There are many configuration paramaters enabling
+    //! entire frame. There are many configuration parameters enabling
     //! [`FrameRead`] to handle a wide range of protocols. Here are some
     //! examples that will cover the various options at a high level.
     //!

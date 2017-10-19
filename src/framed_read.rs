@@ -71,7 +71,7 @@ pub trait Decoder {
     /// protocol differs near the end of the stream.
     ///
     /// Note that the `buf` argument may be empty. If a previous call to
-    /// `decode_eof` consumed all the bytes in the bufer, `decode_eof` will be
+    /// `decode_eof` consumed all the bytes in the buffer, `decode_eof` will be
     /// called again until it returns `None`, indicating that there are no more
     /// frames to yield. This behavior enables returning finalization frames
     /// that may not be based on inbound data.
