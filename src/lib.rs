@@ -6,7 +6,7 @@
 //! [found online]: https://tokio.rs/docs/getting-started/core/
 //! [low level details]: https://tokio.rs/docs/going-deeper-tokio/core-low-level/
 
-#![deny(missing_docs, missing_debug_implementations)]
+#![deny(missing_docs, missing_debug_implementations, warnings)]
 #![doc(html_root_url = "https://docs.rs/tokio-io/0.1")]
 
 #[macro_use]
@@ -19,17 +19,14 @@ extern crate bytes;
 use std::io as std_io;
 use std::io::Write;
 
-use futures::{Async, Poll};
-use futures::future::BoxFuture;
-use futures::stream::BoxStream;
-
+use futures::{Async, Future, Poll, Stream};
 use bytes::{Buf, BufMut};
 
 /// A convenience typedef around a `Future` whose error component is `io::Error`
-pub type IoFuture<T> = BoxFuture<T, std_io::Error>;
+pub type IoFuture<T> = Box<Future<Item = T, Error = std_io::Error> + Send>;
 
 /// A convenience typedef around a `Stream` whose error component is `io::Error`
-pub type IoStream<T> = BoxStream<T, std_io::Error>;
+pub type IoStream<T> = Box<Stream<Item = T, Error = std_io::Error> + Send>;
 
 /// A convenience macro for working with `io::Result<T>` from the `Read` and
 /// `Write` traits.

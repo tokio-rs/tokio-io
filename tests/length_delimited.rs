@@ -1,6 +1,5 @@
 extern crate tokio_io;
 extern crate futures;
-extern crate bytes;
 
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_io::codec::length_delimited::*;
