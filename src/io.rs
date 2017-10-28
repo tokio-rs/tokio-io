@@ -9,6 +9,7 @@
 //! [found online]: https://tokio.rs/docs/getting-started/core/
 //! [low level details]: https://tokio.rs/docs/going-deeper-tokio/core-low-level/
 
+pub use allow_std::AllowStdIo;
 pub use copy::{copy, Copy};
 pub use flush::{flush, Flush};
 pub use lines::{lines, Lines};
