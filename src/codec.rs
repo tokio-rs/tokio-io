@@ -10,6 +10,7 @@
 //! [`Stream`]: #
 //! [transports]: #
 
+pub use codecs::{BytesCodec, LinesCodec};
 pub use framed::{Framed, FramedParts};
 pub use framed_read::{FramedRead, Decoder};
 pub use framed_write::{FramedWrite, Encoder};

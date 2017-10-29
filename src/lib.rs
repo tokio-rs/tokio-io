@@ -51,6 +51,7 @@ macro_rules! try_nb {
 pub mod io;
 pub mod codec;
 
+mod codecs;
 mod copy;
 mod flush;
 mod framed;
