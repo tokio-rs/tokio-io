@@ -66,7 +66,7 @@ mod split;
 mod window;
 mod write_all;
 
-use codec::{Decoder, Encoder, Framed};
+use codec::{Encoder, Framed};
 use split::{ReadHalf, WriteHalf};
 
 /// A trait for readable objects which operated in an asynchronous and
@@ -156,7 +156,7 @@ pub trait AsyncRead: std_io::Read {
     }
 
     /// Provides a `Stream` and `Sink` interface for reading and writing to this
-    /// `Io` object, using `Decode` and `Encode` to read and write the raw data.
+    /// `Io` object, using `codec` to encode and decode the raw data.
     ///
     /// Raw I/O objects work with byte sequences, but higher-level code usually
     /// wants to batch these into meaningful chunks, called "frames". This
@@ -172,8 +172,11 @@ pub trait AsyncRead: std_io::Read {
     /// If you want to work more directly with the streams and sink, consider
     /// calling `split` on the `Framed` returned by this method, which will
     /// break them into separate objects, allowing them to interact more easily.
-    fn framed<T: Encoder + Decoder>(self, codec: T) -> Framed<Self, T>
-        where Self: AsyncWrite + Sized,
+    ///
+    /// The result of this method is a `Stream` if `codec` is a `Decoder`, and
+    /// it is a `Sink` if `Self: AsyncWrite` and `codec` is an `Encoder`.
+    fn framed<T>(self, codec: T) -> Framed<Self, T>
+        where Self: Sized,
     {
         framed::framed(self, codec)
     }
@@ -288,6 +291,24 @@ pub trait AsyncWrite: std_io::Write {
     /// This function will panic if not called within the context of a future's
     /// task.
     fn shutdown(&mut self) -> Poll<(), std_io::Error>;
+
+    /// Provides a `Sink` interface for writing to this `Io` object, using
+    /// `codec` to encode the raw data.
+    ///
+    /// Raw I/O objects work with byte sequences, but higher-level code usually
+    /// wants to batch these into meaningful chunks, called "frames". This
+    /// method layers framing on top of an I/O object, by using the `Codec`
+    /// traits to handle encoding and decoding of messages frames. Note that
+    /// the incoming and outgoing frame types may be distinct.
+    ///
+    /// If this object is also an `AsyncRead`, prefer the `AsyncRead::framed`
+    /// method.
+    fn framed_write_only<T>(self, codec: T) -> Framed<Self, T>
+        where Self: Sized,
+              T: Encoder,
+    {
+        framed::framed(self, codec)
+    }
 
     /// Write a `Buf` into this value, returning how many bytes were written.
     ///
