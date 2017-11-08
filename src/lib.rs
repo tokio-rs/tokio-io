@@ -67,7 +67,7 @@ mod split;
 mod window;
 mod write_all;
 
-use codec::{Decoder, Encoder, Framed};
+use codec::{Decoder, Encoder, Framed, FramedRead, FramedWrite};
 use split::{ReadHalf, WriteHalf};
 
 /// A trait for readable objects which operated in an asynchronous and
@@ -177,6 +177,14 @@ pub trait AsyncRead: std_io::Read {
         where Self: AsyncWrite + Sized,
     {
         framed::framed(self, codec)
+    }
+
+    /// Provides a `Stream` interface for reading data from this `Io` object,
+    /// using `codec` to decode the raw data into objects.
+    fn framed_read<T: Decoder>(self, codec: T) -> FramedRead<Self, T>
+        where Self: Sized,
+    {
+        FramedRead::new(self, codec)
     }
 
     /// Helper method for splitting this read/write object into two halves.
@@ -289,6 +297,14 @@ pub trait AsyncWrite: std_io::Write {
     /// This function will panic if not called within the context of a future's
     /// task.
     fn shutdown(&mut self) -> Poll<(), std_io::Error>;
+
+    /// Provides a `Sink` interface for writing data into this `Io` object,
+    /// using `codec` to encode the objects as raw data.
+    fn framed_write<T: Encoder>(self, codec: T) -> FramedWrite<Self, T>
+        where Self: Sized,
+    {
+        FramedWrite::new(self, codec)
+    }
 
     /// Write a `Buf` into this value, returning how many bytes were written.
     ///
