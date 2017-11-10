@@ -1,3 +1,9 @@
+# 0.1.4 (November 10, 2017)
+
+* Use `FrameTooBig` as length delimited error type (#70).
+* Provide `Bytes` and `Lines` codecs (#78).
+* Provide `AllowStdIo` wrapper (#76).
+
 # 0.1.3 (August 14, 2017)
 
 * Fix bug involving zero sized writes in copy helper (#57).
