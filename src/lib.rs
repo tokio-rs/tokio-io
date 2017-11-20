@@ -228,6 +228,12 @@ impl<'a> AsyncRead for &'a [u8] {
 ///
 /// This trait importantly means that the `write` method only works in the
 /// context of a future's task. The object may panic if used outside of a task.
+///
+/// Note that this trait also represents that the  `Write::flush` method works
+/// very similarly to the `write` method, notably that `Ok(())` means that the
+/// writer has successfully been flushed, a "would block" error means that the
+/// current task is ready to receive a notification when flushing can make more
+/// progress, and otherwise normal errors can happen as well.
 pub trait AsyncWrite: std_io::Write {
     /// Initiates or attempts to shut down this writer, returning success when
     /// the I/O connection has completely shut down.
