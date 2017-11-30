@@ -20,6 +20,7 @@ fn bytes_decoder() {
 fn lines_decoder() {
     let mut codec = LinesCodec::new();
     let buf = &mut BytesMut::new();
+    buf.reserve(200);
     buf.put("line 1\nline 2\r\nline 3\n\r\n\r");
     assert_eq!("line 1", codec.decode(buf).unwrap().unwrap());
     assert_eq!("line 2", codec.decode(buf).unwrap().unwrap());
