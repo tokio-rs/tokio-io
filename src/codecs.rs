@@ -30,6 +30,7 @@ impl Encoder for BytesCodec {
     type Error = io::Error;
 
     fn encode(&mut self, data: Bytes, buf: &mut BytesMut) -> Result<(), io::Error> {
+        buf.reserve(data.len());
         buf.put(data);
         Ok(())
     }
@@ -111,6 +112,7 @@ impl Encoder for LinesCodec {
     type Error = io::Error;
 
     fn encode(&mut self, line: String, buf: &mut BytesMut) -> Result<(), io::Error> {
+        buf.reserve(line.len() + 1);
         buf.put(line);
         buf.put_u8(b'\n');
         Ok(())
