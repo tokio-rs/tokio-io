@@ -15,6 +15,7 @@ extern crate log;
 #[macro_use]
 extern crate futures;
 extern crate bytes;
+extern crate integer_encoding;
 
 use std::io as std_io;
 use std::io::Write;

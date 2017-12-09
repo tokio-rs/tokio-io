@@ -2,12 +2,21 @@ use {codec, AsyncRead, AsyncWrite};
 
 use bytes::{Buf, BufMut, BytesMut, IntoBuf, BigEndian, LittleEndian};
 use bytes::buf::Chain;
+use integer_encoding::{VarIntReader, VarInt};
 
 use futures::{Async, AsyncSink, Stream, Sink, StartSend, Poll};
 
 use std::{cmp, fmt};
 use std::error::Error as StdError;
 use std::io::{self, Cursor};
+
+#[derive(Debug, Clone, Copy)]
+enum LengthFormat {
+    LittleEndian,
+    BigEndian,
+    /// Protobuf's varint format
+    Varint,
+}
 
 /// Configure length delimited `FramedRead`, `FramedWrite`, and `Framed` values.
 ///
@@ -32,8 +41,8 @@ pub struct Builder {
     // `length_field_len + length_field_offset`
     num_skip: Option<usize>,
 
-    // Length field byte order (little or big endian)
-    length_field_is_big_endian: bool,
+    // Length field byte format
+    length_field_format: LengthFormat,
 }
 
 /// Adapts a byte stream into a unified `Stream` and `Sink` that works over
@@ -277,6 +286,7 @@ impl Decoder {
     fn decode_head(&mut self, src: &mut BytesMut) -> io::Result<Option<usize>> {
         let head_len = self.builder.num_head_bytes();
         let field_len = self.builder.length_field_len;
+        let mut num_skip = self.builder.get_num_skip();
 
         if src.len() < head_len {
             // Not enough data
@@ -289,11 +299,20 @@ impl Decoder {
             // Skip the required bytes
             src.advance(self.builder.length_field_offset);
 
-            // match endianess
-            let n = if self.builder.length_field_is_big_endian {
-                src.get_uint::<BigEndian>(field_len)
-            } else {
-                src.get_uint::<LittleEndian>(field_len)
+            // match format
+            let n = match self.builder.length_field_format {
+                LengthFormat::BigEndian => src.get_uint::<BigEndian>(field_len),
+                LengthFormat::LittleEndian => src.get_uint::<LittleEndian>(field_len),
+                LengthFormat::Varint => {
+                    let pos = src.position();
+                    let val = match src.read_varint() {
+                        Ok(val) => val,
+                        Err(_) => return Ok(None)
+                    };
+                    // get_num_skip() returns +1 for varint already, so subtract that again
+                    num_skip += (src.position() - pos - 1) as usize;
+                    val
+                }
             };
 
             if n > self.builder.max_frame_len as u64 {
@@ -318,8 +337,6 @@ impl Decoder {
                 None => return Err(io::Error::new(io::ErrorKind::InvalidInput, "provided length would overflow after adjustment")),
             }
         };
-
-        let num_skip = self.builder.get_num_skip();
 
         if num_skip > 0 {
             let _ = src.split_to(num_skip);
@@ -438,7 +455,8 @@ impl<T: AsyncWrite, B: IntoBuf> FramedWrite<T, B> {
     }
 
     fn set_frame(&mut self, buf: B::Buf) -> io::Result<()> {
-        let mut head = BytesMut::with_capacity(8);
+        // 10 is the maximum size of a 64-bit varint
+        let mut head = BytesMut::with_capacity(10);
         let n = buf.remaining();
 
         if n > self.builder.max_frame_len {
@@ -460,10 +478,23 @@ impl<T: AsyncWrite, B: IntoBuf> FramedWrite<T, B> {
             None => return Err(io::Error::new(io::ErrorKind::InvalidInput, "provided length would overflow after adjustment")),
         };
 
-        if self.builder.length_field_is_big_endian {
-            head.put_uint::<BigEndian>(n as u64, self.builder.length_field_len);
-        } else {
-            head.put_uint::<LittleEndian>(n as u64, self.builder.length_field_len);
+        match self.builder.length_field_format {
+            LengthFormat::BigEndian =>
+                head.put_uint::<BigEndian>(n as u64, self.builder.length_field_len),
+            LengthFormat::LittleEndian =>
+                head.put_uint::<LittleEndian>(n as u64, self.builder.length_field_len),
+            LengthFormat::Varint =>  {
+                let len = {
+                    // bytes_mut is unsafe as it could return uninitialized memory.
+                    // This usage is safe because we only write to it.
+                    let mut slice = unsafe { head.bytes_mut() };
+                    (n as u64).encode_var(&mut slice)
+                };
+                // advance_mut is unsafe because it could result in uninitialized memory
+                // being advanced over.
+                // This usage is safe because we wrote the varint to it beforehand.
+                unsafe { head.advance_mut(len) };
+            }
         }
 
         debug_assert!(self.frame.is_none());
@@ -581,7 +612,7 @@ impl Builder {
             num_skip: None,
 
             // Default to reading the length field in network (big) endian.
-            length_field_is_big_endian: true,
+            length_field_format: LengthFormat::BigEndian,
         }
     }
 
@@ -604,7 +635,7 @@ impl Builder {
     /// # }
     /// ```
     pub fn big_endian(&mut self) -> &mut Self {
-        self.length_field_is_big_endian = true;
+        self.length_field_format = LengthFormat::BigEndian;
         self
     }
 
@@ -627,7 +658,32 @@ impl Builder {
     /// # }
     /// ```
     pub fn little_endian(&mut self) -> &mut Self {
-        self.length_field_is_big_endian = false;
+        self.length_field_format = LengthFormat::LittleEndian;
+        self
+    }
+
+    /// Read the length field as a 64-bit varint
+    ///
+    /// The default setting is big endian.
+    ///
+    /// This configuration option applies to both encoding and decoding.
+    /// When using varint, calls to [`length_field_length`](#method.length_field_length)
+    /// will be ignored.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use tokio_io::AsyncRead;
+    /// use tokio_io::codec::length_delimited::Builder;
+    ///
+    /// # fn bind_read<T: AsyncRead>(io: T) {
+    /// Builder::new()
+    ///     .varint()
+    ///     .new_read(io);
+    /// # }
+    /// ```
+    pub fn varint(&mut self) -> &mut Self {
+        self.length_field_format = LengthFormat::Varint;
         self
     }
 
@@ -665,7 +721,8 @@ impl Builder {
     ///
     /// The default value is `4`. The max value is `8`.
     ///
-    /// This configuration option applies to both encoding and decoding.
+    /// This configuration option applies to both encoding and decoding in little and big endian.
+    /// When using the varint format, it will be ignored.
     ///
     /// # Examples
     ///
@@ -833,12 +890,19 @@ impl Builder {
     }
 
     fn num_head_bytes(&self) -> usize {
-        let num = self.length_field_offset + self.length_field_len;
+        let num = self.length_field_offset + self.get_length_field_len();
         cmp::max(num, self.num_skip.unwrap_or(0))
     }
 
     fn get_num_skip(&self) -> usize {
-        self.num_skip.unwrap_or(self.length_field_offset + self.length_field_len)
+        self.num_skip.unwrap_or(self.length_field_offset + self.get_length_field_len())
+    }
+
+    fn get_length_field_len(&self) -> usize {
+        match self.length_field_format {
+            LengthFormat::LittleEndian | LengthFormat::BigEndian => self.length_field_len,
+            LengthFormat::Varint => 1
+        }
     }
 }
 
