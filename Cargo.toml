@@ -14,4 +14,4 @@ categories = ["asynchronous"]
 [dependencies]
 bytes = "0.4"
 futures = "0.1.11"
-log = "0.3"
+log = "0.4"
