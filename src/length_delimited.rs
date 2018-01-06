@@ -386,6 +386,24 @@ impl<T: AsyncWrite, B: IntoBuf> FramedWrite<T, B> {
 }
 
 impl<T, B: IntoBuf> FramedWrite<T, B> {
+    /// Returns the current max frame setting
+    ///
+    /// This is the largest size this codec will write to the wire. Larger
+    /// frames will be rejected.
+    pub fn max_frame_length(&self) -> usize {
+        self.builder.max_frame_len
+    }
+
+    /// Updates the max frame setting.
+    ///
+    /// The change takes effect the next time a frame is encoded. In other
+    /// words, if a frame is currently in process of being encoded with a frame
+    /// size greater than `val` but less than the max frame length in effect
+    /// before calling this function, then the frame will be allowed.
+    pub fn set_max_frame_length(&mut self, val: usize) {
+        self.builder.max_frame_length(val);
+    }
+
     /// Returns a reference to the underlying I/O stream wrapped by
     /// `FramedWrite`.
     ///
