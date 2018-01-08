@@ -49,7 +49,10 @@ fn lines_decoder() {
     assert_eq!(None, codec.decode(buf).unwrap());
     assert_eq!(None, codec.decode_eof(buf).unwrap());
     buf.put("k");
+    assert_eq!(None, codec.decode(buf).unwrap());
     assert_eq!("\rk", codec.decode_eof(buf).unwrap().unwrap());
+    assert_eq!(None, codec.decode(buf).unwrap());
+    assert_eq!(None, codec.decode_eof(buf).unwrap());
 }
 
 #[test]
