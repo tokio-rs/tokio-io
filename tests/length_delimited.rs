@@ -250,7 +250,7 @@ fn read_single_multi_frame_one_packet_skip_none_adjusted() {
         .length_field_length(2)
         .length_field_offset(2)
         .num_skip(0)
-        .length_adjustment(4)
+        .length_adjustment(0)
         .new_read(mock! {
             Ok(data.into()),
         });

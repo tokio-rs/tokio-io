@@ -283,7 +283,7 @@ impl Decoder {
             return Ok(None);
         }
 
-        let n = {
+        let mut n = {
             let mut src = Cursor::new(&mut *src);
 
             // Skip the required bytes
@@ -319,11 +319,7 @@ impl Decoder {
             }
         };
 
-        let num_skip = self.builder.get_num_skip();
-
-        if num_skip > 0 {
-            let _ = src.split_to(num_skip);
-        }
+        n = n + head_len;
 
         // Ensure that the buffer has enough space to read the incoming
         // payload
@@ -362,12 +358,18 @@ impl codec::Decoder for Decoder {
         };
 
         match try!(self.decode_data(n, src)) {
-            Some(data) => {
+            Some(mut data) => {
                 // Update the decode state
                 self.state = DecodeState::Head;
 
                 // Make sure the buffer has enough space to read the next head
                 src.reserve(self.builder.num_head_bytes());
+
+                let num_skip = self.builder.get_num_skip();
+
+                if num_skip > 0 {
+                    let _ = data.split_to(num_skip);
+                }
 
                 Ok(Some(data))
             }
