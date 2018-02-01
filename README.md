@@ -1,3 +1,7 @@
+## The tokio-io crate has been moved into the [tokio](https://github.com/tokio-rs/tokio) Git repository.
+
+Do not use this repo anymore.
+
 # tokio-io
 
 Core I/O abstractions for the Tokio stack.
