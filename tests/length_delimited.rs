@@ -451,6 +451,52 @@ fn write_update_max_frame_len_in_flight() {
     assert!(io.get_ref().calls.is_empty());
 }
 
+#[test]
+fn framed_update_max_frame_len_at_rest() {
+    let mut io : Framed<Mock> = Builder::new()
+        .new_framed(mock! {
+            Ok(b"\x00\x00\x00\x09abcdefghi"[..].into()),
+            Ok(b"\x00\x00\x00\x06"[..].into()),
+            Ok(b"abcdef"[..].into()),
+            Ok(Flush),
+            Ok(b"\x00\x00\x00\x09abcdefghi"[..].into()),
+        });
+
+    assert_eq!(io.poll().unwrap(), Ready(Some(b"abcdefghi"[..].into())));
+    assert!(io.start_send(b"abcdef"[..].into()).unwrap().is_ready());
+    assert!(io.poll_complete().unwrap().is_ready());
+    io.set_max_frame_length(5);
+    assert_eq!(io.poll().unwrap_err().kind(), io::ErrorKind::InvalidData);
+    assert_eq!(io.start_send(b"abcdef"[..].into()).unwrap_err().kind(), io::ErrorKind::InvalidInput);
+    assert!(io.get_ref().calls.is_empty());
+}
+
+#[test]
+fn framed_update_max_frame_len_in_flight() {
+    let mut io : Framed<Mock> = Builder::new()
+        .new_framed(mock! {
+            Ok(b"\x00\x00\x00\x09abcd"[..].into()),
+            Err(would_block()),
+            Ok(b"\x00\x00\x00\x06"[..].into()),
+            Ok(b"ab"[..].into()),
+            Err(would_block()),
+            Ok(b"efghi"[..].into()),
+            Ok(b"cdef"[..].into()),
+            Ok(Flush),
+            Ok(b"\x00\x00\x00\x09abcdefghi"[..].into()),
+        });
+
+    assert_eq!(io.poll().unwrap(), NotReady);
+    assert!(io.start_send(b"abcdef"[..].into()).unwrap().is_ready());
+    assert!(!io.poll_complete().unwrap().is_ready());
+    io.set_max_frame_length(5);
+    assert_eq!(io.poll().unwrap(), Ready(Some(b"abcdefghi"[..].into())));
+    assert!(io.poll_complete().unwrap().is_ready());
+    assert_eq!(io.poll().unwrap_err().kind(), io::ErrorKind::InvalidData);
+    assert_eq!(io.start_send(b"abcdef"[..].into()).unwrap_err().kind(), io::ErrorKind::InvalidInput);
+    assert!(io.get_ref().calls.is_empty());
+}
+
 // ===== Test utils =====
 
 fn would_block() -> io::Error {

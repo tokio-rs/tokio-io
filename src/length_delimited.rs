@@ -102,6 +102,29 @@ impl<T: AsyncRead + AsyncWrite, B: IntoBuf> Framed<T, B> {
 }
 
 impl<T, B: IntoBuf> Framed<T, B> {
+    /// Returns the current max frame setting
+    ///
+    /// This is the largest size this framed will accept from or write to the wire.
+    /// Larger frames will be rejected.
+    pub fn max_frame_length(&self) -> usize {
+        debug_assert!(self.inner.max_frame_length() == self.inner.get_ref().max_frame_length());
+        self.inner.max_frame_length()
+    }
+
+    /// Updates the max frame setting.
+    ///
+    /// The change takes effect the next time a frame is encoded or decoded.
+    /// In other words, if a frame is currently being processed with a size
+    /// greater than `val` but less than the max frame length in effect
+    /// before calling this function, then the frame will be allowed.
+    ///
+    /// If you need different max frame lengths for encoding and decoding, you
+    /// might want to create your own `FramedWrite` and `FramedRead` directly.
+    pub fn set_max_frame_length(&mut self, val: usize) {
+        self.inner.set_max_frame_length(val);
+        self.inner.get_mut().set_max_frame_length(val);
+    }
+
     /// Returns a reference to the underlying I/O stream wrapped by `Framed`.
     ///
     /// Note that care should be taken to not tamper with the underlying stream
