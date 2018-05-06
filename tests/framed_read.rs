@@ -5,7 +5,7 @@ extern crate futures;
 use tokio_io::AsyncRead;
 use tokio_io::codec::{FramedRead, Decoder};
 
-use bytes::{BytesMut, Buf, IntoBuf, BigEndian};
+use bytes::{BytesMut, Buf, IntoBuf};
 use futures::Stream;
 use futures::Async::{Ready, NotReady};
 
@@ -31,7 +31,7 @@ impl Decoder for U32Decoder {
             return Ok(None);
         }
 
-        let n = buf.split_to(4).into_buf().get_u32::<BigEndian>();
+        let n = buf.split_to(4).into_buf().get_u32_be();
         Ok(Some(n))
     }
 }
