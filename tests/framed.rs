@@ -6,7 +6,7 @@ use futures::{Stream, Future};
 use std::io::{self, Read};
 use tokio_io::codec::{Framed, FramedParts, Decoder, Encoder};
 use tokio_io::AsyncRead;
-use bytes::{BytesMut, Buf, BufMut, IntoBuf, BigEndian};
+use bytes::{BytesMut, Buf, BufMut, IntoBuf};
 
 const INITIAL_CAPACITY: usize = 8 * 1024;
 
@@ -21,7 +21,7 @@ impl Decoder for U32Codec {
             return Ok(None);
         }
 
-        let n = buf.split_to(4).into_buf().get_u32::<BigEndian>();
+        let n = buf.split_to(4).into_buf().get_u32_be();
         Ok(Some(n))
     }
 }
@@ -33,7 +33,7 @@ impl Encoder for U32Codec {
     fn encode(&mut self, item: u32, dst: &mut BytesMut) -> io::Result<()> {
         // Reserve space
         dst.reserve(4);
-        dst.put_u32::<BigEndian>(item);
+        dst.put_u32_be(item);
         Ok(())
     }
 }
